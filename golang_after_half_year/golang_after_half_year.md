@@ -28,6 +28,7 @@ Google 的海量规模，会遇到前所未有的问题，也会遇到已知问�
 
 把 Go 的并发特性排在第一位来聊，我认为是相当程度上是众望所归的。据说并发编程有两大套路，一是 shared memory，二是 message passing。前者是最普遍的模式，它直接源自 Dijkstra 于60年代发布的一系列关于并发编程的文章，这些文章奠定了计算机科学中的并发概念；后者一般追溯到Hoare于1976年发布的论文Communicating Sequential Processes（以下简称 CSP）。
 
+### Communicating Sequential Processes
 CSP 是一篇很有野心的论文（原文如此），它尝试定义一系列编程原语（primitive）来解决并行进程的同步问题。这里要qualify所谓的“并行进程”：
 1. 原文确实写的“parallel”，但按当代眼光来看，并行更多是硬件的能力而非程序的组织结构，这篇论文也确实是提出了处理并发问题的模型。我认为在原文的语境中，我们可以暂时不去细究并发和并行之别。
 2. 原文中的“process”并非对应到某个具体OS的process上，比如Linux process，文中是一个更抽象的概念。我认为理解为执行流（thread of execution）就不错。
@@ -40,13 +41,15 @@ CSP 是一篇很有野心的论文（原文如此），它尝试定义一系列�
 
 进程间通信操作以两个进程名为参数，分别是输出和输入进程；且通信操作是无缓冲的，等待通信的进程会阻塞，这对应到Go默认的无缓冲`channel`。
 
-此外：输入操作可以出现在guarded command中，条件为真即意味着该通信操作当前可以无阻塞地立即进行；循环体也可以以输入操作为条件，循环会运行至所有消息源进程都已终结。
+此外：输入操作可以作为在guarded command的条件，输入条件为真即意味着该通信操作当前可以无阻塞地立即进行；循环体也可以以输入操作为条件，循环会运行至所有消息源进程都已终结。
 
-channel阻塞，process name
-communication select
+显然，Go的并发模式很大程度上借鉴了这篇论文的成果，并使得这篇论文的成果在近40年后再次为人所熟知。事实上，Rob Pike等人在Bell Lab做过Plan 9操作系统，当时该操作系统就使用了CSP模式的并发设计；如今他们在Google又有机会掏出来用了。另一方面，erlang也是一个使用CSP做并发的编程语言。
 
+### Message Passing
+这一套的好处，鼓励更高层次的处理并发问题，少见raw sync primitive，并非去除。在实现和OS层还是一个shared memory。
 
-他们在plan 9实践过。
+## 多态
+Go的多态实现也是非常有意思的一点。
 
 [] goroutine, 协程, COE - Hungbiu的文章 - 知乎, https://zhuanlan.zhihu.com/p/404452442  
 [] Concurrency Is Not Parallelism - Rob Pike, https://www.youtube.com/watch?v=qmg1CF3gZQ0  
