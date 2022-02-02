@@ -14,7 +14,7 @@ Google 的海量规模，会遇到前所未有的问题，也会遇到已知问�
 举例几点已知的问题：
 1. C++的编译耗时，这是当初Go想解决的一大痛点。C++为了兼容C以提高易用度（他俩都诞生在Bell Lab），包括其编译模型。Google内部的C++代码量级本身相当可观，加上Google内部代码仓库的组织方式，再加上用70年代的C编译模型来编译，属于凌迟。
 2. 再比如语言本身的复杂度，C++必读书目中Scott Meyers的两本Effective C++加起来将近百条款项，大几百页，而你才刚刚入门。Go对此表示“大道至简”，语言一共只有不到30个关键字，以及programming language学界的paper一律不看。
-3. 编写并发程序。C++直到C++11才有内存模型以及线程的概念，而Go团队在初期就认为语言要内置对并发的支持。
+3. 编写并发程序。C++直到C++11才有内存模型（memory model）以及线程的概念，而Go团队在初期就认为语言要内置对并发的支持。
 
 说了这么些，意思是Go的提出有其特定背景，曰“知其然，知其所以然”。这点非常重要，如果你是一个C++开发者，也请不要照搬 Google 的 C++ Style Guide，那是他们内部的需要！“我们讨厌C++”更多是一句吐槽，Go无意也无法替代某某语言，但它提供一个新颖独特的选项。所以，事后两个语言都活得好好的，C++开发者继续在性能敏感（~~历史遗留~~）领域圈地自萌，而Go开发者里来了很多之前写Python却觉得太慢的朋友。
 
@@ -45,8 +45,20 @@ CSP 是一篇很有野心的论文（原文如此），它尝试定义一系列�
 
 显然，Go的并发模式很大程度上借鉴了这篇论文的成果，并使得这篇论文的成果在近40年后再次为人所熟知。事实上，Rob Pike等人在Bell Lab做过Plan 9操作系统，当时该操作系统就使用了CSP模式的并发设计；如今他们在Google又有机会掏出来用了。另一方面，erlang也是一个使用CSP做并发的编程语言。
 
-### Message Passing
-这一套的好处，鼓励更高层次的处理并发问题，少见raw sync primitive，并非去除。在实现和OS层还是一个shared memory。
+### 从CSP到并发编程
+当下，一台X86-64架构的服务器可能拥有百倍于20年前的可用内存，但内存容量增长的速度依旧远远落后于人类软件需求的增长速度，CPU的单核心性能进步也遇到瓶颈[Sutter]。程序员不能再依赖新的硬件来解决性能问题，并发编程也不再停在学术论文或实验室中，而成为工业界的热门话题。
+
+C++一直是Google内部研发的主力语言，但在C11/C++11标准前，这两个编程语言是没有“线程”概念的，也没有内存模型。要进行并发编程，只能依赖第三方库或编译器内置函数（compiler intrinsic）。而这个第三方库，通常就是POSIX提供的线程及相关同步设施。然而，很多时候，直接使用系统接口来编写并发代码是困难的。
+
+直接使用OS线程的问题是，其粒度较大，而且属于OS实现，应用程序对其的控制力有限；既然OS线程的粒度相对固定，那就很难能直接映射到应用程序多样的、更细粒度的并发工作负载。为此，程序员们可谓想尽了办法。比如，最常见的模式是线程池，Java标准库对此有很好的支持；C++社区还有在努力引入协程，比如boost fiber，腾讯的libco（C++20已经有标准协程了！）。
+
+而系统提供的同步原语大部分直接来自经典计算机论文，比如mutex、semaphore来自Dijkstra，monitor（condition variable）来自Hoare。这些同步原语的设计背景多是操作系统实现（source？），而对于编写应用程序显得过于底层，从而阻碍程序员表达并发的程序结构或模式。
+
+什么是并发的程序结构或模式？考虑map-reduce，fork-join之类的，这些用同步原语写起来是相当蛋疼的。
+
+对于这些现实的需要，Go的并发模式是从高层次抽象出发（CSP），向底层实现靠拢的，这点非常特别，所以是整个语言里最优雅的一部分（我认为）。
+
+如何port操作系统？见GMP。
 
 ## 多态
 Go的多态实现也是非常有意思的一点。
@@ -55,4 +67,6 @@ Go的多态实现也是非常有意思的一点。
 [] Concurrency Is Not Parallelism - Rob Pike, https://www.youtube.com/watch?v=qmg1CF3gZQ0  
 [] Communicating Sequential Processes - C.A.R. Hoare, http://www.cs.ox.ac.uk/people/bill.roscoe/publications/4.pdf  
 [] Guarded Command - E.W. Dijkstra, https://dl.acm.org/doi/pdf/10.5555/1074100.1074433#:~:text=The%20term%20guarded%20command%2C%20as,execution%20is%20controlled%20by%20B.  
+[] Go Concurrency Patterns, https://go.dev/blog/pipelines 
+[] Advanced Go Concurrency Patterns, https://go.dev/blog/io2013-talk-concurrency  
 
