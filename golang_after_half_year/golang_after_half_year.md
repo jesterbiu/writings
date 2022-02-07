@@ -103,11 +103,37 @@ func main() {
 ```
 future使得发起计算、使用结果和计算本身三件事情解耦，可以分别放到独立的执行流中去。
 
+### semaphore
+```go
+type Semaphore struct {
+	bucket chan struct{}
+}
+
+func makeSem(limit int) Semaphore {
+	return Semaphore{make(chan struct{}, limit)}
+}
+
+func (sem *Semaphore) Signal() {
+	<-sem.bucket
+}
+
+func (sem *Semaphore) Wait() {
+	sem.bucket <- struct{}{}
+}
+
+```
+
 ### cv
 https://medium.com/a-journey-with-go/go-monitor-pattern-9decd26fb28
-
-3. semaphore - inverted worker pattern resource limited
-
+```go
+type queueState struct {
+    elems []int
+    
+}
+type Queue struct {
+    state chan queueState
+}
+```
 
 
 [] goroutine, 协程, COE - Hungbiu的文章 - 知乎, https://zhuanlan.zhihu.com/p/404452442  
