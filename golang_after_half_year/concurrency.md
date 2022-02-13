@@ -82,23 +82,32 @@ CSP 解决的是并行进程环境下的通信问题，它引入了一个可以�
 本文不会再展开谈 Go 并发编程的实践。但推荐一篇 Go 官方博客 [Pipelines]。这篇文章非常适合琢磨 Go concurrency idioms（结尾的几条链接也值得研究），并可以总结出以下要点：  
 - 并发（或并行）程序模式。文中展示了 pipelines 和 fan in/out 模式，其中 fan in/out 其实就是 fork-join 的别名罢了。熟悉的面孔，见 Java 的 `ForkJoinPool`。  
 - Cancellation。并发程序通常需要实现停止执行的机制，文中展示了通过 `chan` 实现的取消机制。这方面还可以进一步阅读另一篇官方博客的叙述 [Context]。  
-- 有界的并发或并行度。在编写并发程序时，如果仅简单地把每个待并发处理的元素映射到一个新的 goroutine，可能会遇到资源瓶颈。本文不谈使用某种形式的 goroutine pool 来解决，而是推荐一种 inverted pool pattern[Rethink]：
+- 有界的并发或并行度。在编写并发程序时，如果仅简单地把每个待并发处理的元素映射到一个新的 goroutine，可能会遇到资源瓶颈。这方面推荐看一下[Rethink]中的 inverted pool pattern：  
 ```go
 type token struct{}
 semaphore := make(
-    chan token, limit)
+	chan token, limit)
 wait := func() {
-    semaphore <- token{}
-}
-signal := func() {
-    <- semaphore
-}
-for _, e := range bigCollection {
-    wait()
-    go func() {
-        process(e)
-        signal()
+	    semaphore <- token{}
     }
+signal := func() {
+		<-semaphore
+		atomic.AddInt32(&worker, -1)
+	}
+
+// 最多limit个goroutine同时在process，否则阻塞在wait()
+// 不需要WaitGroup控制，或chan进行内容分发
+for i := range bigCollection {
+	wait()
+	go func(i int) {
+		process(i)
+		signal()
+	}(i)
+}
+
+// 等待所有goroutine退出（即最后limit个）
+for i := 0; i < limit; i++ {
+	semaphore <- token{}
 }
 ```
 
@@ -120,7 +129,7 @@ for _, e := range bigCollection {
 [Pipelines] Go Concurrency Patterns, https://go.dev/blog/pipelines  
 [Mutex] Solution of a Problem in Concurrent Programming Control - E.W. Dijkstra, http://rust-class.org/static/classes/class19/dijkstra.pdf  
 [Sem] EWD35 - E.W. Dijkstra, https://www.cs.utexas.edu/users/EWD/translations/EWD35-English.html  
-[Monitor] Monitors - C.A.R. Hoare, https://www.classes.cs.uchicago.edu/archive/2020/winter/33100-1/papers/hoare-monitors.pdf
+[Monitor] Monitors - C.A.R. Hoare, https://www.classes.cs.uchicago.edu/archive/2020/winter/33100-1/papers/hoare-monitors.pdf  
 [RCox] Bell Labs and CSP Threads - Russ Cox, https://swtch.com/~rsc/thread/  
 [ParPatterns] Structured Parallelism programming Patterns: Patterns for Efficient Computation  
 [Actor] Hewitt, Meijer and Szyperski: The Actor Model, https://youtu.be/7erJ1DV_Tlo  
