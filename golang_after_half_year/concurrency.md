@@ -25,9 +25,9 @@ Google 的海量规模，会遇到前所未有的问题，也会遇到已知问�
 Go 的提出有其特定背景，“知其然，知其所以然” 非常重要，如果你是一个 C++ 开发者，也请不要照搬 Google 的 C++ Style Guide，那是他们内部的需要！“我们讨厌 C++” 更多是一句吐槽，Go 无意也无法替代某某语言，Go 甚至没有编程语言甚至编程实践创新的念头，它的初衷就是为了解决眼前的问题[GoPL]。所以，事后两个语言都活得好好的，C++ 开发者继续在性能敏感领域圈地自萌，而 Go 开发者里来了很多之前写 Python 却觉得太慢的朋友。
 
 ## Go 的并发模式
-在中文互联网上，介绍 Go 几乎总是离不开 “Go 协程” 这个概念。我之前写有一篇文章来讨论这个问题[COE]：我不认为这是个好的说法。goroutine 的机制是，多路复用操作系统线程，并在 OS 线程上调度协程。实现上，goroutine 可以对应为用户态线程；但从其整套 Go 并发设计来看，goroutine 是一个比协程或 OS 线程抽象层次更高的概念。相较之下，协程则是太原始而底层的一个概念了，这方面可以参考 C++20 coroutine 的 interface，其语义基本和最早的协程一致[Nano]。此外，诉诸权威的话，Rob Pike 的原话是“Multiplexing coroutines on OS threads”[NotPar]。
+在中文互联网上，介绍 Go 几乎总是离不开 “Go 协程” 这个概念。我之前写有一篇文章来讨论这个问题[COE]：我不认为这是个好的说法。goroutine 的机制是，多路复用操作系统线程，并在 OS 线程上调度协程。实现上，goroutine 可以对应为用户态线程；但从其整套 Go 并发设计来看，goroutine 是一个比协程或 OS 线程抽象层次更高的概念。相较之下，协程则是太原始而底层的一个概念了，这方面可以参考 C++20 coroutine，其语义基本和最早的协程一致[Nano]。此外，诉诸权威的话，Rob Pike 介绍goroutine的原话是“multiplexing coroutines on OS threads”[NotPar]。
 
-把 Go 的并发特性排在第一位来聊，我认为是相当程度上是众望所归的。据传，并发编程的范式可以对应到进程间通信（inter-process communication）的两大套路：一是共享内存（shared memory），二是消息传递（message passing）。当然，接下来我们会看到这两个套路更多是不同的问题建模方法，互为补充，而非互斥的关系。
+把 Go 的并发特性排在本系列文章的第一位来聊，我认为是相当程度上是众望所归的。据传，并发编程的范式可以对应到进程间通信（inter-process communication）的两大套路：一是共享内存（shared memory），二是消息传递（message passing）。当然，接下来我们会看到这两个套路更多是不同的问题建模方法，互为补充，而非互斥的关系。
 
 共享内存是最普遍的模式，它更多地源自 Dijkstra 于 60 年代发布的一系列关于并发编程的文章，这些文章奠定了计算机科学中的并发概念；1989 年 Andrew D. Birrell 的 technical report[SRC] 对这个范式做了总结。
 
@@ -40,9 +40,9 @@ C++ 一直是 Google 内部研发的主力语言，但在 C11/C++11 标准前，
 
 直接使用 OS 线程的问题是，其粒度较大，而且属于 OS 实现，应用程序对其的控制力有限；既然 OS 线程的粒度相对固定，那就很难能直接映射到应用程序多样的、更细粒度的并发工作负载。为此，程序员们可谓想尽了办法。比如，最常见的模式是线程池，Java 标准库对此有很好的支持；C++ 社区还有在努力引入协程（通常比 `goroutine` 更底层），比如 boost fiber，腾讯的 libco，最新的标准 C++20 提供语言级的协程支持。
 
-而系统提供的同步原语（synchronization primitive）大部分直接来自经典计算机论文，比如 mutex、semaphore 来自 Dijkstra，monitor（condition variable）来自 Hoare。这些同步原语的设计背景多是操作系统实现，而对于编写应用程序显得过于底层，从而阻碍程序员表达并发的程序结构或模式。
+而系统提供的同步原语（synchronization primitive）大部分直接来自经典计算机论文，比如 mutex[Mutex]、semaphore[Sem] 来自 Dijkstra，monitor（condition variable）来自 Hoare[Monitor]。这些同步原语的设计背景多是操作系统实现，而对于编写应用程序显得过于底层，从而阻碍程序员表达并发的程序结构或模式。
 
-以上更多从性能角度描述了对并发的需求，很符合一些程序员的认识。然而，**Go 团队一直强调支持并发的出发点，是支持以并发的软件设计方式，因为并发更符合世界运转的实际方式，性能的考虑完全是次要的**。并发的程序结构（模式）描述的是控制流的组织，考虑以下最有名或常用的几个模式。  
+以上更多从性能角度描述了对并发的需求，很符合一些程序员的认识。然而，**Go 团队一直强调支持并发的出发点，是支持并发的软件设计方式，因为并发更符合世界运转的实际方式，性能的考虑完全是次要的**。并发的程序结构（模式）描述的是控制流的组织，考虑以下最有名或常用的几个模式。  
 1. Map-Reduce：  
 ![Map-Reduce](./img/map-reduce.jpg)
 2. Fork-Join：  
@@ -51,7 +51,7 @@ C++ 一直是 Google 内部研发的主力语言，但在 C11/C++11 标准前，
 ![Pipeline](./img/pipeline.png)
 
 对于一些常见的并发问题，程序员使用这样的模式去对问题建模，是非常符合直觉的；但要用同步原语来实现，却是非常反直觉的。**实现这些模式本身，仍然是实现程序的控制流而非业务；再要用同步原语来实现，代码只会更加肮脏**
-。出于以上现实的需要，Go 语言团队认为编程语言本身需要提供表达并发模式的基础设施。他们的选择是 Hoare 的 CSP，玩消息传递流派。实际上，Go 团队对于 CSP 的偏好或者说选择，要追溯至 80 年代了，这方面的历史可以参考 Russ Cox 的博客 [RCox]。
+。出于以上现实的需要，Go 语言团队认为编程语言本身需要提供表达并发模式的基础设施。他们的选择是 Hoare 的 CSP，玩消息传递流派。实际上，Go 团队对于 CSP 的偏好，要追溯至上世纪 80 年代了，这方面的历史可以参考 Russ Cox 的博客 [RCox]。
 
 并发可能是 Go 语言最漂亮优雅的特性。我认为其中很重要的一个原因，就是其并发设计灵感来自于一篇自顶向下、面向高层次抽象的论文，而非面向实现的。此处谈到的 “面向实现”，指的是从硬件属性出发，向高级语言及其编程模式构建。例如 C 语言就是一门面向实现的语言，它设计初衷就想做离汇编一步之遥的高级语言，从而获得极强的移植性。而从高层次抽象向实现拟合的语言设计，例如 SQL，它一举将数据定义和查询的语言，与关系数据库的执行计划、存储引擎的实现解耦。
 
@@ -68,9 +68,9 @@ CSP 解决的是并行进程环境下的通信问题，它引入了一个可以�
 
 进程间通信操作以两个进程名为参数，分别是输出和输入进程；且通信操作是无缓冲的，等待通信的进程会阻塞，这对应到 Go 默认的无缓冲 `channel`。在随后基于 CSP 编程实践中，人们发现以两个进程名作为通信参数是个错误的选择，因为它把进程的创建和组织限制在编译时，从而难以表达更复杂或动态的程序 [RCox]。
 
-如今 Go 语言中，`channel` 是作为一类变量存在的，其进行读写的两端也是可以动态绑定的。相应地，goroutine是没有identity的——从Java世界来的程序员们要求 Go runtime 提供 goroutine ID，但官方终不采纳。
+如今 Go 语言中，`channel` 是作为变量存在的，其进行读写的两端不仅可以动态绑定，还可以绑定多个 goroutine。相应地，goroutine 是没有 identity 的——从 Java 世界来的程序员们要求 Go runtime 提供 goroutine ID，但官方终不采纳。
 
-然而，诞生于 1986 年的 Erlang 其实也是一个以 CSP 为灵感设计并发的编程语言，Erlang process 间却是通过指定 pid 来通信的。显然，它对于以上问题有不同的看法。如果把眼光再放远一些，在actor model中，每个actor以“地址”作为其标识符进行通信，而标识符可以“重载”，就像IP地址可以划分子网[Actor]。
+然而，诞生于 1986 年的 Erlang 其实也是一个以 CSP 为灵感设计并发的编程语言，Erlang process 间却是通过指定 pid 来通信的。显然，它对于以上问题有不同的看法。如果把眼光再放远一些，在actor model中，每个 actor 以“地址”作为其标识符进行通信，而标识符可以“重载”，就像IP地址可以划分子网[Actor]。
 
 此外，输入操作可以作为在 guarded command 的条件，输入条件为真即意味着该通信操作当前可以无阻塞地立即进行；循环体也可以以输入操作为条件，循环会运行至所有消息源进程都已终结。这类似 Go 里将 `channel` 作为 range-for 中循环的对象。
 
@@ -82,7 +82,7 @@ CSP 解决的是并行进程环境下的通信问题，它引入了一个可以�
 本文不会再展开谈 Go 并发编程的实践。但推荐一篇 Go 官方博客 [Pipelines]。这篇文章非常适合琢磨 Go concurrency idioms（结尾的几条链接也值得研究），并可以总结出以下要点：  
 - 并发（或并行）程序模式。文中展示了 pipelines 和 fan in/out 模式，其中 fan in/out 其实就是 fork-join 的别名罢了。熟悉的面孔，见 Java 的 `ForkJoinPool`。  
 - Cancellation。并发程序通常需要实现停止执行的机制，文中展示了通过 `chan` 实现的取消机制。这方面还可以进一步阅读另一篇官方博客的叙述 [Context]。  
-- 有界的并发或并行度。在编写并发程序时，如果仅简单地把每个待并发处理的元素映射到一个新的 goroutine，可能会遇到资源瓶颈。此处先不谈使用某种形式的 goroutine pool 来解决，而是推荐一种 inverted pool pattern[Rethink]：
+- 有界的并发或并行度。在编写并发程序时，如果仅简单地把每个待并发处理的元素映射到一个新的 goroutine，可能会遇到资源瓶颈。本文不谈使用某种形式的 goroutine pool 来解决，而是推荐一种 inverted pool pattern[Rethink]：
 ```go
 type token struct{}
 semaphore := make(
@@ -111,7 +111,7 @@ for _, e := range bigCollection {
 [Expr] Expressiveness Of Go - Rob Pike, https://talks.golang.org/2010/ExpressivenessOfGo-2010.pdf  
 [GoPL] The Go Programming Language and Environment, https://youtu.be/YXV7sa4oM4I    
 [COE] goroutine, 协程, COE - Hungbiu 的文章 - 知乎, https://zhuanlan.zhihu.com/p/404452442  
-[Nano] “Nano-coroutines to the Rescue! (Using Coroutines TS, of Course)” - G. Nishanov, https://www.youtube.com/watch?v=j9tlJAqMV7U 
+[Nano] “Nano-coroutines to the Rescue! (Using Coroutines TS, of Course)” - G. Nishanov, https://www.youtube.com/watch?v=j9tlJAqMV7U  
 [NotPar] Concurrency Is Not Parallelism - Rob Pike, https://www.youtube.com/watch?v=qmg1CF3gZQ0   
 [SRC] An Introduction to Programming with Threads - Andrew D. Birrell, https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-35.pdf  
 [CSP] Communicating Sequential Processes - C.A.R. Hoare, http://www.cs.ox.ac.uk/people/bill.roscoe/publications/4.pdf  
@@ -119,6 +119,8 @@ for _, e := range bigCollection {
 [GuardedCommand] Guarded Command - E.W. Dijkstra, https://dl.acm.org/doi/pdf/10.5555/1074100.1074433#:~:text=The%20term%20guarded%20command%2C%20as,execution%20is%20controlled%20by%20B.  
 [Pipelines] Go Concurrency Patterns, https://go.dev/blog/pipelines  
 [Mutex] Solution of a Problem in Concurrent Programming Control - E.W. Dijkstra, http://rust-class.org/static/classes/class19/dijkstra.pdf  
+[Sem] EWD35 - E.W. Dijkstra, https://www.cs.utexas.edu/users/EWD/translations/EWD35-English.html  
+[Monitor] Monitors - C.A.R. Hoare, https://www.classes.cs.uchicago.edu/archive/2020/winter/33100-1/papers/hoare-monitors.pdf
 [RCox] Bell Labs and CSP Threads - Russ Cox, https://swtch.com/~rsc/thread/  
 [ParPatterns] Structured Parallelism programming Patterns: Patterns for Efficient Computation  
 [Actor] Hewitt, Meijer and Szyperski: The Actor Model, https://youtu.be/7erJ1DV_Tlo  
