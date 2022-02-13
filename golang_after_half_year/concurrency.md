@@ -92,7 +92,6 @@ wait := func() {
     }
 signal := func() {
 		<-semaphore
-		atomic.AddInt32(&worker, -1)
 	}
 
 // 最多limit个goroutine同时在process，否则阻塞在wait()
