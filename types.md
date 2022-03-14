@@ -47,15 +47,16 @@ func (s *Slice[T]) Len() int {
 当前的 Go generics 主要就是通过复用已有的 interface 特性来表达类型限制；而上述的 Comparable 应该只能内置实现。
 
 ## Java Generics
-Java 将继承的概念贯彻得很全面，因此 Java generics 中主要通过`extends`和`super`关键字来分别限制类型参数在继承链中的上界和下界。比如：
+Java 大量使用了继承的概念，因此 Java generics 中的类型约束主要通过`extends`和`super`关键字来分别限制类型参数在继承链中的上界和下界。比如编写一个泛型函数`copy`来拷贝存放在`List`中的`T`类型对象，其函数签名如下：
 ```java
-void copy<T>(List<? extends T> src, List<? super T> dest)
+static <T> void copy(List<? extends T> src, List<? super T> dest)
 ```
-引用类型对象默认可以upcast，如果我转存T对象，那么必须从能upcast为T类型对象的list中读取；然后写入能够T能够upcast的类型的List中去。
+`extends`关键字限定了`src`元素类型的上界，必须能从中读取到`T`；而`super`限定了`dest`元素类型的下界，必须能够存放一个类型`T`。背后的机制是，继承意味着可替换性——可以给父类参数提供子类对象，语法上表现为upcast，如果我转存T对象，那么必须从能upcast为T类型对象的list中读取；然后写入能够T能够upcast的类型的List中去。
 
 这个例子行不行？
 
-## C++ Generics
+covariance：ArrayList<Number> 有 ArrayList<Integer> 父类子类关系吗？
+contravariance：Function<Number, String> 是 Function<Integer, String> 的子类
 
 ## interface
 Java or C++ inheritance is a mix
