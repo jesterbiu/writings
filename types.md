@@ -21,12 +21,12 @@ Go 中`==`所具备的多态性，即函数或操作符重载（讨论多态定�
 
 对于函数重载版本间不同的参数列表，此处也解释为不同的类型。比如一个参数列表`(T1, T2, T3)`可以唯一地对应到一个类型`tuple<T1, T2, T3>`。
 
-类比同样不支持自定义操作符重载的Java，其值类型和引用类型的`==`操作符分别具备多态性吗？
+类比同样不支持自定义操作符重载的 Java，其值类型和引用类型的`==`操作符分别具备多态性吗？
 
 ## Parametric Polymorphism
-Go 中有另一种更显而易见的多态，那就是`map`和 slice 类型的操作。以 slice 为例，对于每个类型`T`，`[]T`都是不同的类型;但是`[]T`作为`len()`、`[]`、`append()`等函数的参数时，这些函数处理具体的值的逻辑都是一样的，而与具体的`T`无关。这一类函数逻辑不依具体类型而定的多态，被称为 parametric polymorphism。
+Go 中有另一种更显而易见的多态，那就是`map`和 slice 类型的操作。以 slice 为例，对于每个类型`T`，`[]T`都是不同的类型;但是`[]T`作为`len()`、`[]`、`append()`等函数的参数时，这些函数处理具体的值的逻辑都是一样的，而与具体的`T`无关。这一类函数逻辑不依具体类型而定的多态，被称为 parametric polymorphism，使用这种多态进行编程有个更为人熟悉的名字：泛型编程（generic programming）。
 
-比如，用 Go generics 的语法来描述 slice 与`len()`函数，它们可能长下面这样：
+比如，用 Go 的泛型语法来描述 slice 与`len()`函数，它们可能长下面这样：
 ```go
 // see reflect.SliceHeader
 type Slice[T any] struct {
@@ -44,23 +44,31 @@ func (s *Slice[T]) Len() int {
 
 举一个简单的例子，`map`的键类型必须满足 Comparable 的约束，Comparable 类型能通过`==`和`!=`操作符比较相等性，否则实例化的`map`无法判断键值是否相等。根据 Go spec [2]：“... comparable types are boolean, numeric, string, pointer, channel, and interface types”。
 
-当前的 Go generics 主要就是通过复用已有的 interface 特性来表达类型限制；而上述的 Comparable 应该只能内置实现。
+当前，Go 泛型主要通过复用已有的 interface 特性来表达类型限制；而上述的 Comparable 目前只能由编译器内置实现。
 
-## Java Generics
-Java 大量使用了继承的概念，因此 Java generics 中的类型约束主要通过`extends`和`super`关键字来分别限制类型参数在继承链中的上界和下界。比如编写一个泛型函数`copy`来拷贝存放在`List`中的`T`类型对象，其函数签名如下：
+## Subtype Polymorphism
+Java 大量使用了继承的概念，Java 中基于继承和虚函数实现的多态可能是很多程序员最熟悉的一种多态，被称为subtype polymorphism （又称 inclusion polymorphism）。Java 于 SE 5 引入了泛型特性，那么 subtyping 和 parameteric polymorphism 相遇时会是什么情况呢？
+
+Java 泛型中的类型约束主要通过`extends`和`super`关键字实现，这两个关键字用于分别限制类型参数在其继承体系中的上界和下界。比如，编写一个泛型函数`copy`来拷贝存放在`List`中的`T`类型对象，其函数签名如下：
 ```java
 static <T> void copy(List<? extends T> src, List<? super T> dest)
 ```
-`extends`关键字限定了`src`元素类型的上界，必须能从中读取到`T`；而`super`限定了`dest`元素类型的下界，必须能够存放一个类型`T`。背后的机制是，继承意味着可替换性——可以给父类参数提供子类对象，语法上表现为upcast，如果我转存T对象，那么必须从能upcast为T类型对象的list中读取；然后写入能够T能够upcast的类型的List中去。
+- `extends`限定了`src`元素类型的上界，必须能从`src`中读取到类型`T`的变量。
+- `super`限定了`dest`元素类型的下界，必须能往`dest`中写入类型`T`的变量。
 
-这个例子行不行？
+这一组关键字与继承的联系是，继承意味着可替换性（substitutability），可以在使用基类处提供子类对象。需要注意的是，这里说的可替代性主要是在语法上的，体现为子类引用可以隐式地向上转型（upcasting）为基类引用；面向对象编程中常提到的里氏替换原则（Liskov substitution principle）更多是语义上的，实际严谨的叫法是 behavioral subtyping, 对于不同类型行为作出了要求 [3]。
 
+插一句题外话，Alan Kay 曾在一场 talk 中谈到，他认为面向对象编程最脆弱的地方之一，是依赖程序员能按照接口的语义去编写代码，仅仅满足接口的输入、输出类型不能满足他对“面向对象编程”的定义 [4]。
+
+subtyping 和 parameteric polymorphism 还会遇到另一个问题：covariance 与 contravariance。Variance 指的是，refers to how subtyping between more complex types relates to subtyping between their components “复合类型”之间的subtyping关系和
 covariance：ArrayList<Number> 有 ArrayList<Integer> 父类子类关系吗？
 contravariance：Function<Number, String> 是 Function<Integer, String> 的子类
 
-## interface
+## Structural Subtyping
 Java or C++ inheritance is a mix
 structural typing is a mix of inclusion and ad-hoc polymorphism.
 
 [1] Wikipedia - Polymorphism (computer science). https://en.wikipedia.org/wiki/Polymorphism_(computer_science)  
 [2] Go spec - Comparison operators. https://go.dev/ref/spec#Comparison_operators  
+[3] Wikipedia - Liskov substitution principle. https://en.wikipedia.org/wiki/Liskov_substitution_principle  
+[4] Seminar with Alan Kay on Object Oriented Programming (VPRI 0246). https://youtu.be/QjJaFG63Hlo  
