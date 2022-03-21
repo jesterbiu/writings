@@ -15,7 +15,9 @@
 - 对于`chan`, 可以比较两个`chan`变量是否引用同一个 channel。  
 - 对于`map`或 slice，`==`仅可以把`map`或 slice 变量和`nil`值比较，检查是否进行过初始化。  
 
-Go 中`==`所具备的多态性，即函数或操作符重载（讨论多态定义时，操作符可认为是前文所述的抽象的函数），被归类为 ad-hoc polymorphism，“Ad-hoc”的含义是特设的。这种多态指的是，根据不同类型的参数，去选择多态函数调用的具体实现；而每个函数实现是根据参数类型定制的，不同的实现之间不需要存在任何联系。
+
+## Ad-hoc Polymorphism
+Go 中`==`所具备的多态性，类似函数或操作符重载的效果（讨论多态定义时，操作符可认为是前文所述的抽象的函数），这种多态被归类为 ad-hoc polymorphism。“ad-hoc”的意为“特设的”，这种多态指的是，根据不同类型的参数，去选择一个多态函数的调用的具体实现；而每个函数实现是根据参数类型定制的，不同的实现之间不需要存在任何联系。
 
 比如上述`int`和`string`所对应的`==`实现，是分别根据`int`和`string`定制的；编译器会根据`==`左右两个参数的类型去选择正确的`==`实现，且不同的实现根本互不相干（cmp指令和memcmp）。
 
@@ -47,7 +49,7 @@ func (s *Slice[T]) Len() int {
 当前，Go 泛型主要通过复用已有的 interface 特性来表达类型限制；而上述的 Comparable 目前只能由编译器内置实现。
 
 ## Subtype Polymorphism
-Java 大量使用了继承的概念，Java 中基于继承和虚函数实现的多态可能是很多程序员最熟悉的一种多态，被称为subtype polymorphism （又称 inclusion polymorphism）。Java 于 SE 5 引入了泛型特性，那么 subtyping 和 parameteric polymorphism 相遇时会是什么情况呢？
+Java 大量使用了继承的概念，Java 中基于类继承和虚函数实现的多态可能是很多程序员最熟悉的一种多态，这种多态被称为subtype polymorphism （又称 inclusion polymorphism）——Java 中的继承意味着可替换性（substitutability），可以在期待基类处提供子类对象并安全运行。Java 于 SE 5 引入了泛型特性，那么 subtyping 和 parameteric polymorphism 相遇时会是什么情况呢？
 
 Java 泛型中的类型约束主要通过`extends`和`super`关键字实现，这两个关键字用于分别限制类型参数在其继承体系中的上界和下界。比如，编写一个泛型函数`copy`来拷贝存放在`List`中的`T`类型对象，其函数签名如下：
 ```java
@@ -56,9 +58,14 @@ static <T> void copy(List<? extends T> src, List<? super T> dest)
 - `extends`限定了`src`元素类型的上界，必须能从`src`中读取到类型`T`的变量。
 - `super`限定了`dest`元素类型的下界，必须能往`dest`中写入类型`T`的变量。
 
-这一组关键字与继承的联系是，继承意味着可替换性（substitutability），可以在使用基类处提供子类对象。需要注意的是，这里说的可替代性主要是在语法上的，体现为子类引用可以隐式地向上转型（upcasting）为基类引用；面向对象编程中常提到的里氏替换原则（Liskov substitution principle）更多是语义上的，实际严谨的叫法是 behavioral subtyping, 对于不同类型行为作出了要求 [3]。
+这一组关键字与继承的联系是？Java 的类继承声明了类型之间的 subtype 关系。
 
-插一句题外话，Alan Kay 曾在一场 talk 中谈到，他认为面向对象编程最脆弱的地方之一，是依赖程序员能按照接口的语义去编写代码，仅仅满足接口的输入、输出类型不能满足他对“面向对象编程”的定义 [4]。
+需要注意的是，这里的可替代性很浅薄，只是在语法上体现为子类引用可以隐式地向上转型（upcasting）为基类引用。
+
+但面向对象编程中常提到的里氏替换原则（Liskov substitution principle）则是语义上的，实际严谨的叫法是 behavioral subtyping, 对于不同类型行为作出了要求 [3]。Alan Kay 曾在一场 talk 中谈到，他认为面向对象编程最脆弱的地方之一，是依赖程序员能按照接口的语义去编写代码，仅仅满足接口的输入、输出类型不能满足他对“面向对象编程”的定义 [4]。
+
+## Subtyping VS. Inheritance
+
 
 subtyping 和 parameteric polymorphism 还会遇到另一个问题：covariance 与 contravariance。Variance 指的是，refers to how subtyping between more complex types relates to subtyping between their components “复合类型”之间的subtyping关系和
 covariance：ArrayList<Number> 有 ArrayList<Integer> 父类子类关系吗？
