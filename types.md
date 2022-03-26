@@ -49,20 +49,29 @@ func (s *Slice[T]) Len() int {
 当前，Go 泛型主要通过复用已有的 interface 特性来表达类型限制；而上述的 Comparable 目前只能由编译器内置实现。
 
 ## Subtype Polymorphism
-Java 大量使用了继承的概念，Java 中基于类继承和虚函数实现的多态可能是很多程序员最熟悉的一种多态，这种多态被称为subtype polymorphism （又称 inclusion polymorphism）——Java 中的继承意味着可替换性（substitutability），可以在期待基类处提供子类对象并安全运行。Java 于 SE 5 引入了泛型特性，那么 subtyping 和 parameteric polymorphism 相遇时会是什么情况呢？
+Java 大量使用了继承的概念，Java 中基于继承（此处包括`extends` superclass 和`implements` interface两类情况）和虚函数实现的多态可能是很多程序员最熟悉的一种多态，这种多态被称为 subtype polymorphism（又称 inclusion polymorphism）。广义的继承（inheritance in computer science），目的是代码复用，而非规定如何处理接口或类型关系。但在 Java 的语境中，subclass 不仅继承了 superclass 的代码，也继承了 superclass 的接口，使得 subclass 成为了 superclass 的 subtype（子类型，为了避免与“子类”混淆，本文此处还是用英文）。
 
-Java 泛型中的类型约束主要通过`extends`和`super`关键字实现，这两个关键字用于分别限制类型参数在其继承体系中的上界和下界。比如，编写一个泛型函数`copy`来拷贝存放在`List`中的`T`类型对象，其函数签名如下：
+Subtyping 的定义为一种类型间的关系：设有两个类型 S 和 T，S 是 T 的 subtype，则 S 类型的元素可以被“安全地”用于期待 T 的上下文中（如何满足“可替换性”还与具体的编程语言或编程准则相关）。因此，这个关系又被称作可替换性（substitutability）。显然，subtyping 与代码复用的重点不同，前者从 supertype 获取的是接口及其语义，后者获取的是代码实现（implementation），没有默认实现的 Java interface 相比 class inheritance 更接近 subtyping 的定义。
+
+此处不再赘述基于继承和虚函数实现的多态，而是来讨论另一个问题：Java 于 SE 5 引入了泛型特性，那么 subtyping 和泛型相遇时会是什么情况呢？
+
+Java 泛型中通过`extends`和`super`关键字表达类型约束，这两个关键字用于分别限制类型参数在其继承体系中的上界和下界。比如泛型的`Arrays.sort`其函数签名如下：
+
 ```java
-static <T> void copy(List<? extends T> src, List<? super T> dest)
+public static <T> void sort(T[] a,
+            int fromIndex,
+            int toIndex,
+            Comparator<? super T> c)
 ```
-- `extends`限定了`src`元素类型的上界，必须能从`src`中读取到类型`T`的变量。
-- `super`限定了`dest`元素类型的下界，必须能往`dest`中写入类型`T`的变量。
+其中，`super`限定了`Comparator`元素类型的下界，该Comparator必须能够比较两个类型`T`的变量。
 
-这一组关键字与继承的联系是？Java 的类继承声明了类型之间的 subtype 关系。
+这样设计的原因是，上文提到泛型函数依赖类型间具备共有结构和性质；而 Java 中正是继承声明了类型之间的 subtype 关系。又由于 Java 缺乏 structural typing 的能力（详细讨论见下文），所以 Java 泛型选择使用继承体系来约束类型实参的共同性质（subtype 拥有与 supertype 相兼容的接口），是一个自然而然的选择。
 
-需要注意的是，这里的可替代性很浅薄，只是在语法上体现为子类引用可以隐式地向上转型（upcasting）为基类引用。
+然而，在上面`sort`的例子中， subtyping 的仅仅体现在赋值语句中，可以安全地把 subclass 引用赋值给 superclass：假设`TS`是`T`的一个 superclass，`c`实参类型是`Comparator<TS>`，那么可以把两个`T`类型的变量传入`c.compare()`中进行比较。
 
-但面向对象编程中常提到的里氏替换原则（Liskov substitution principle）则是语义上的，实际严谨的叫法是 behavioral subtyping, 对于不同类型行为作出了要求 [3]。Alan Kay 曾在一场 talk 中谈到，他认为面向对象编程最脆弱的地方之一，是依赖程序员能按照接口的语义去编写代码，仅仅满足接口的输入、输出类型不能满足他对“面向对象编程”的定义 [4]。
+然而，这样的约束其实仅仅停留在语法层面。面向对象编程中常提到的里氏替换原则（Liskov substitution principle）则是语义上的，实际严谨的叫法是 behavioral subtyping，对于多态的行为作出了要求 [3]。Oracle的 docs 中对`Comparator<T>.compare()`的语义有详细的描述，但代码是否正确地实现了该语义却完全取决于程序员，编译器无从判断。
+
+Alan Kay 曾在一场 talk 中谈到，他认为面向对象编程最脆弱的地方之一，是依赖程序员能按照接口的语义去编写代码，仅仅满足接口的输入、输出类型不能满足他对“面向对象编程”的定义 [4]。
 
 ## Subtyping VS. Inheritance
 
