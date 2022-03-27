@@ -80,7 +80,7 @@ Alan Kay 曾在一场 talk 中谈到，他认为面向对象编程最脆弱的�
 
 ## Structural Subtyping
 
-Go interface 是其运行时多态的一种重要手段，它以一组方法签名来定义，用于指定一个类型的行为。比如`context.Context`的定义为以下一组方法：
+Go 和 Java 一样也有 `interface`，同样地用于指定一个类型的行为，且以一组方法签名来定义。比如`context.Context`的定义为以下一组方法：
 
 ```go
 type Context interface {
@@ -91,11 +91,11 @@ type Context interface {
 }
 ```
 
-有了上文的铺垫，可以推断出 Go interface 的使用也是一种 subtype polymorphism；但它跟 Java interface 不一样之处是，Go interface 不需要显式地声明实现与 interface 的关系，而是由编译器进行检查。`context` 的实现分别使用了 `emptyCtx`， `cancelCtx`，`timerCtx` 和 `valueCtx` 等一系列结构体，分别对应其的各个方法，但这些结构体的声明和定义都不需要提及 `context` interface。
+有了上文的铺垫，可以推断出 Go `interface` 的使用也是一种 subtype polymorphism。但它跟 Java `interface` 不一样之处是，Go `interface` 不需要显式地声明实现与 interface 的关系，而是由编译器进行检查。`context` 的实现分别使用了 `emptyCtx`， `cancelCtx`，`timerCtx` 和 `valueCtx` 等一系列结构体，但这些结构体的声明和定义都不需要提及 `context` interface。
 
-Go 的方式被称为 structural typing，它基于类型的实际结构和定义，来判断类型之间的关系 [6]；而基于声明的则被称为 nominal typing。
+Go 的方式被称为 structural typing，它基于类型的实际结构和定义，来决定类型之间的关系 [6]；而基于声明来决定的则被称为 nominal typing。Structural typing 又可进一步地分为静态和动态的——后者有个更广为人知的名字：duck typing。在 Go 的情况中，假设有`type S`和`interface I`，Go 编译器通过检查`S`是否实现了`I`所定义的方法集，来判断`S`是否为`I`的 subtype。
 
- Go 长期没有泛型所以 interface 也有运行时表示
+Go 长期没有泛型所以 interface 也有运行时表示 interface也是类型
 
 举例 C++ template 也有类似功效
 
