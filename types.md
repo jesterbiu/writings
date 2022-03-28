@@ -95,7 +95,7 @@ type Context interface {
 
 Go 的方式被称为 structural typing，它基于类型的实际结构和定义，来决定类型之间的关系 [6]；而基于声明来决定的则被称为 nominal typing。Structural typing 又可进一步地分为静态和动态的——后者有个更广为人知的名字：duck typing。在 Go 的情况中，假设有`type S`和`interface I`，Go 编译器通过检查`S`是否实现了`I`所定义的方法集，来判断`S`是否为`I`的 subtype。
 
-Go 长期没有泛型所以 interface 也有运行时表示 interface也是类型
+Go 没有 Java 式的继承，并且把 nominal typing 改为 structural，能够减少代码间的耦合性。
 
 举例 C++ template 也有类似功效
 
