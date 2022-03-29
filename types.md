@@ -9,26 +9,26 @@
 ## 无处不在的多态
 如今 C++/Java 流派的面向对象编程有最广泛的使用，因此可能有不少程序员对于多态或其他计算机科学词汇的理解都建立在该流派的语境之下。说到多态，脑子里可能出现的是基于类继承实现的动态派发。然而，可以想得再简单而基础一些：各种运算符通常也是多态的！比如，相等运算符`==`。
 
-虽然 Go 不支持自定义运算符重载，但它的 `==` 实现却是多态的，可以类比于语言内置的重载。  
-- 对于标量原始类型，如 `int` 或 `bool`，`==` 的语义是比较标量的值是否相等，其实现一般就是一条 CPU 的 cmp 指令。  
-- 对于 `string`，`==` 比较两个字符串是否为相同的 rune 序列；又由于 Go 使用 UTF-8 编码，`==` 的实现很可能就是一条 `memcmp`（可以去这个网站查看对应的汇编代码：https://godbolt.org）。  
-- 对于 `chan`，由于其具备引用语义，比较的是两个 `chan` 变量是否引用同一个 channel 实例。  
-- 对于 `map` 或 slice，`==`仅可以把 `map` 或 slice 变量和 `nil` 值比较，检查是否进行过初始化。  
+虽然 Go 不支持自定义运算符重载，但它的 `==` 实现却是多态的，可以类比于语言内置的重载。  
+- 对于标量原始类型，如 `int` 或 `bool`，`==` 的语义是比较标量的值是否相等，其实现一般就是一条 CPU 的 cmp 指令。  
+- 对于 `string`，`==` 比较两个字符串是否为相同的 rune 序列；又由于 Go 使用 UTF-8 编码，`==` 的实现很可能就是一条 `memcmp`（可以去这个网站查看对应的汇编代码：https://godbolt.org）。  
+- 对于 `chan`，由于其具备引用语义，比较的是两个 `chan` 变量是否引用同一个 channel 实例。  
+- 对于 `map` 或 slice，`==`仅可以把 `map` 或 slice 变量和 `nil` 值比较，检查是否进行过初始化。  
 
 
 ## Ad-hoc Polymorphism
 Go 中`==`所具备的多态性，类似函数或操作符重载的效果（讨论多态定义时，操作符可认为是前文所述的抽象的函数），这种多态被归类为 ad-hoc polymorphism。“ad-hoc”的意为“特设的”，这种多态指的是，根据不同类型的参数，去选择一个多态函数的调用的具体实现；而每个函数实现是根据参数类型定制的，不同的实现之间不需要存在任何联系。
 
-比如上述 `int` 和 `string` 所对应的 `==` 实现，是分别根据 `int` 和 `string` 定制的；编译器会根据 `==` 左右两个参数的类型去选择正确的 `==` 实现，且不同的实现根本互不相干（cmp指令和memcmp）。
+比如上述 `int` 和 `string` 所对应的 `==` 实现，是分别根据 `int` 和 `string` 定制的；编译器会根据 `==` 左右两个参数的类型去选择正确的 `==` 实现，且不同的实现根本互不相干（cmp指令和memcmp）。
 
-对于函数重载版本间不同的参数列表，此处也解释为不同的类型。比如一个参数列表 `(T1, T2, T3)` 可以唯一地对应到一个类型 `tuple<T1, T2, T3>`。
+对于函数重载版本间不同的参数列表，此处也解释为不同的类型。比如一个参数列表 `(T1, T2, T3)` 可以唯一地对应到一个类型 `tuple<T1, T2, T3>`。
 
-类比同样不支持自定义操作符重载的 Java，其值类型和引用类型的 `==` 操作符分别具备多态性吗？
+类比同样不支持自定义操作符重载的 Java，其值类型和引用类型的 `==` 操作符分别具备多态性吗？
 
 ## Parametric Polymorphism
-Go 中有另一种更显而易见的多态，那就是 `map` 和 slice 类型的操作。以 slice 为例，对于每个类型 `T`，`[]T` 都是不同的类型；但是 `[]T` 作为 `len()`、`[]`、`append()` 等函数的参数时，这些函数处理具体的值的逻辑都是一样的，而与具体的 `T` 无关。这一类函数逻辑不依具体类型而定的多态，被称为 parametric polymorphism，使用这种多态进行编程有个更为人熟悉的名字：泛型编程（generic programming）。
+Go 中有另一种更显而易见的多态，那就是 `map` 和 slice 类型的操作。以 slice 为例，对于每个类型 `T`，`[]T` 都是不同的类型；但是 `[]T` 作为 `len()`、`[]`、`append()` 等函数的参数时，这些函数处理具体的值的逻辑都是一样的，而与具体的 `T` 无关。这一类函数逻辑不依具体类型而定的多态，被称为 parametric polymorphism，使用这种多态进行编程有个更为人熟悉的名字：泛型编程（generic programming）。
 
-比如，用 Go 的泛型语法来描述 slice 与 `len()` 函数，它们可能长下面这样：
+比如，用 Go 的泛型语法来描述 slice 与 `len()` 函数，它们可能长下面这样：
 ```go
 // see reflect.SliceHeader
 type Slice[T any] struct {
@@ -42,9 +42,9 @@ func (s *Slice[T]) Len() int {
 }
 ```
 
-不论`T`的实际类型是什么，每个由 `slice[T]` 实例化得到类型都有一个 `len` 字段，这是 `Len()` 方法能够运作的基础。由此引出，假设一个 parametric polymorphism 函数所能作用的参数类型的集合为 `G`，那么 `G` 中的 `T` 都需要具备某种结构或性质。在很多具备泛型特性的编程语言中，类型约束（type constraint）就对应上述抽象的`G`，它作用于泛型函数的类型参数。
+不论`T`的实际类型是什么，每个由 `slice[T]` 实例化得到类型都有一个 `len` 字段，这是 `Len()` 方法能够运作的基础。由此引出，假设一个 parametric polymorphism 函数所能作用的参数类型的集合为 `G`，那么 `G` 中的 `T` 都需要具备某种结构或性质。在很多具备泛型特性的编程语言中，类型约束（type constraint）就对应上述抽象的`G`，它作用于泛型函数的类型参数。
 
-举一个简单的例子，`map` 的键类型必须满足 Comparable 的约束，Comparable 类型能通过`==`和`!=`操作符比较相等性，否则实例化的`map`无法判断键值是否相等。根据 Go spec [2]：“... comparable types are boolean, numeric, string, pointer, channel, and interface types”。
+举一个简单的例子，`map` 的键类型必须满足 Comparable 的约束，Comparable 类型能通过`==`和`!=`操作符比较相等性，否则实例化的`map`无法判断键值是否相等。根据 Go spec [2]：“... comparable types are boolean, numeric, string, pointer, channel, and interface types”。
 
 当前，Go 泛型主要通过复用已有的 interface 特性来表达类型限制；而上述的 Comparable 目前只能由编译器内置实现。
 
@@ -91,11 +91,22 @@ type Context interface {
 }
 ```
 
-有了上文的铺垫，可以推断出 Go `interface` 的使用也是一种 subtype polymorphism。但它跟 Java `interface` 不一样之处是，Go `interface` 不需要显式地声明实现与 interface 的关系，而是由编译器进行检查。`context` 的实现分别使用了 `emptyCtx`， `cancelCtx`，`timerCtx` 和 `valueCtx` 等一系列结构体，但这些结构体的声明和定义都不需要提及 `context` interface。
+有了上文的铺垫，可以推断出 Go `interface` 的使用也是一种 subtype polymorphism。但它跟 Java `interface` 不一样之处是，Go `interface` 不需要显式地声明实现与 interface 的关系，而是由编译器进行检查。`context` 的实现分别使用了 `emptyCtx`， `cancelCtx`，`timerCtx` 和 `valueCtx` 等一系列结构体，但这些结构体的声明和定义都不需要提及 `context` interface。
 
-Go 的方式被称为 structural typing，它基于类型的实际结构和定义，来决定类型之间的关系 [6]；而基于声明来决定的则被称为 nominal typing。Structural typing 又可进一步地分为静态和动态的——后者有个更广为人知的名字：duck typing。在 Go 的情况中，假设有`type S`和`interface I`，Go 编译器通过检查`S`是否实现了`I`所定义的方法集，来判断`S`是否为`I`的 subtype。
+Go 的方式被称为 structural typing，它基于类型的实际结构和定义，来决定类型之间的关系 [6]；而基于声明来决定的则被称为 nominal typing。Structural typing 又可进一步地分为静态和动态的——后者俗称 duck typing。在 Go 的情况中，假设有`type S`和`interface I`，Go 编译器通过检查`S`是否实现了`I`所定义的方法集，来判断`S`是否为`I`的 subtype。
 
 Go 没有 Java 式的继承，并且把 nominal typing 改为 structural，能够减少代码间的耦合性。
+
+与此同时，Go interface 也是 ad-hoc 的。
+
+```go
+type Iterator[T] interface {
+  Next() bool
+  Get()  T
+}
+```
+
+
 
 举例 C++ template 也有类似功效
 
