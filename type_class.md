@@ -17,3 +17,53 @@
 3.  `(==) :: a(==) -> a(==) -> Bool`，只有实现了 equality 这个接口的类型才可以比较。
 
 对于 OOP：借鉴虚表的实现方式。对于3.，我们这样实现：`eq(vtable, a, a)`，其中 vtable 指向变量a的类型对应的相等函数。
+
+## Subclass
+
+要求 `Num` 的类型必须能具备相等性：
+
+```haskell
+class Eq a => Num a where 
+	(+)    :: a -> a -> a
+	(*)    :: a -> a -> a
+	negate :: a -> a
+```
+
+`a` 属于 `Eq`，是 `a` 属于 `Num` 的必要条件。
+
+## Go Generic
+
+dict 实现
+
+## C++ Concept
+
+```c++
+template <typename T>
+concept eq = requires(T a, T b) {
+    { a == b } -> std::convertible_to<bool>;
+};
+
+template <typename T>
+concept ord = requires(T a, T b) {
+    { a < b } -> std::convertible_to<bool>;
+};
+
+template <typename T>
+concept cmp = eq<T> && ord<T>;
+
+struct person {
+    int identity;
+    std::string name;
+};
+
+bool operator==(const person& lhs, const person& rhs) {
+    return lhs.identity == rhs.identity;
+}
+
+bool operator<(const person& lhs, const person& rhs) {
+    return lhs.identity < rhs.identity;
+}
+```
+
+
+
