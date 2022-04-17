@@ -1,8 +1,10 @@
 # 论文导读：How to make ad-hoc polymorphism less ad-hoc 
 
-## significance
+## Significance
 
-这篇论文提出了 type class 的概念来更好地支持 ad-hoc polymorphism 的应用。Type class 可以视为一种函数重载的机制，解决了 OOP、bounded quantification 的一些问题。
+这篇论文提出了 *type class* 的概念，一种应用 ad-hoc polymorphism 的方式。Type class 可以视为一种函数重载的机制，解决了 OOP、bounded quantification 的一些问题。
+
+先来说下
 
 ## Polymorphism 简介
 
