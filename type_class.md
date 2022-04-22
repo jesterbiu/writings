@@ -104,7 +104,7 @@ class Eq a => Num a where
 1. 类型 `a` 属于 `class Eq`（这个 type class实现了相等比较），是 `a` 属于 `Num` 的必要条件。这一点展示了 type class 的组合能力，熟悉 OOP 继承的读者可以想象 type class 间基于组合关系形成的 hierarchy。
 2. 在满足 1. 的基础上，如果类型 `a` 具备 `+`, `*` 和 `negate` 函数，则 `a` 属于 `class Num`。
 
-随后，我们通过 `instance` 关键字和定义 type class 要求的函数，将一个类型实现为某个 type class 的成员：
+，我们通过 `instance` 关键字和定义 type class 要求的函数，将一个类型实现为某个 type class 的成员：
 
 ```haskell
 instance Num Int where
@@ -113,22 +113,23 @@ instance Num Int where
 	negate = negInt
 ```
 
-在使用时，可以通过 type class 声明一个函数仅于一组类型之上有定义，这一组类型属于这个 type class（或同时属于这一组 type class）。以下我们定义平方函数 `square` 仅在属于 `Num` 的类型上有定义，签名为 `a -> a`（入参和返回值都是一个 `a`）。
+在使用时，可以通过 type class 声明一个函数仅于一组类型之上有定义，这一组类型属于这个 type class（或同时属于这一组 type class）。例如，我们声明多态的加法、乘法和取相反值的函数仅在属于 `Num` 的类型上有定义：
 
 ```haskell
-square :: Num a => a -> a
-square x = x * x
+add :: Num a => a -> a -> a
+mul :: Num a => a -> a -> a
+neg :: Num a => a -> a
 ```
 
-熟悉 OOP 方法论的读者可能会说，interface 也是一组方法的集合，难道 type class 就是发明了一次 interface（如果不是又一次）？
+看到这里，熟悉 OOP 方法论的读者可能会说，interface 也是一组方法的集合，难道 type class 就是发明了一次 interface（如果不是又一次）？
 
-其实，这两个概念还是泾渭分明的：type class 不是类型，但具体的 interface 通常是一个类型。OOP 里的 interface 是 subtype polymorphism 的一种应用：如果类型 S 是类型 T 的 subtype 关系（记为 S <: T），意味着可以在期待 T 对象之处，用 S 对象安全地替换 T 使用（此处关联里氏替换原则）。然而 type class 不是类型，那么某个类型与其所属的 type class 之间就没有所谓可替换性一说了。
+其实，从编程语言设计的角度上来看，这两个概念还是泾渭分明的：type class 不是类型，但具体的 interface 通常是一个类型。OOP 里的 interface 是 subtype polymorphism 的一种应用：如果类型 S 是类型 T 的 subtype 关系（记为 S <: T），意味着可以在期待 T 对象之处，用 S 对象安全地替换 T 使用（此处关联里氏替换原则）。然而 type class 不是类型，那么某个类型与其所属的 type class 之间就没有所谓可替换性一说了。
 
 ## Tranlastion
 
-原文还花了很大篇幅来讲解“翻译技巧”：对于没有 type class 的概念的编程语言，可以通过一组算法把使用了 type class 的代码翻译为没有 type class 但功能相等的代码。
+原文还花了相当的篇幅来讲解“翻译技巧”：对于没有 type class 的概念的编程语言，可以在编译时通过一系列算法把使用了 type class 的代码翻译为没有 type class 但功能相等的代码。
 
-对于 OOP：借鉴虚表的实现方式。对于3.，我们这样实现：`eq(vtable, a, a)`，其中 vtable 指向变量a的类型对应的相等函数。
+这种翻译的方式借鉴了 OOP 中 subtype polymorphism 的实现方式：通过函数表进行派发。每个 type class 都对应一个新的类型作为其函数表（原文：method dictionary）。 那么，
 
 ## Go Generic
 
