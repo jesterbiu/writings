@@ -8,18 +8,22 @@
 
 Philip Wadler, Stephen Blott 于 1988 年发表了论文 *How to make ad-hoc polymorphism less ad hoc* [1]，这篇论文提出了 *type class* 的概念。Type class 是基于 ad-hoc polymorphism 的一种多态机制，解决了面向对象编程（OOP）、bounded quantification 的一些问题。
 
-论文还描述了一种 type class 实现方式：对于没有 type class 但具备 Hindley-Milner 类型系统的编程语言，可以在编译时通过一系列算法把使用 type class 的代码翻译为没有 type class 但功能相等的代码。
+论文还描述了 type class 实现方式：对于没有 type class 的编程语言，可以在编译时通过一系列算法把使用 type class 的代码翻译为没有 type class 但功能相等的代码。
 
-进入讨论前，先来介绍下两种重要的多态类型 [4]：
+然而，单纯地使用某一种多态存在其局限。论文以编写类型的相等运算（equality comparison）为例，详细地讨论了这个问题（原文使用的编程语言支持操作符重载）。虽然相等运算是一种常见操作，但它通常也是多态的：
 
-- *parametric polymorphism*（参数多态），函数定义于一组类型上，对于其中的类型，函数的行为都一样——即泛型函数。
-- *ad-hoc polymorphism*（特设多态），函数的定义是为每个类型特设的，例子是函数重载。
+```haskell
+-- 签名含义：输入两个类型为?的变量，返回一个Bool值
+(==) :: ? -> ? -> Bool
+```
 
- 然而，主要体现为函数重载的 ad-hoc poymorphism 存在一定局限。论文以编写类型的相等运算（equality comparison）为例，详细地讨论了这个问题。以下的例子 假设编程语言支持以定义重载函数的形式来定义操作符重载，即，以 `==`  作为相等运算的函数名。
+todo 多态的定义
 
 ## The Ad-hoc Way
 
-第一种方式是，为每个需要相等比较的类型都写一份定义，按照 concrete type 来解析函数（类似 C++/Java 的函数重载）。这种方式下，假如为 `Int, Bool, MyRecord` 三种类型实现 `==`，需要编写以下三个函数：
+*parametric polymorphism*（参数多态），函数定义于一组类型上，对于其中的类型，函数的行为都一样——即泛型函数。
+
+第一种方式实现 `==` 的方式是，为每个需要相等比较的类型都写一份定义，按照函数实参来解析函数（类似 C++/Java 的函数重载）。这种方式是纯粹的 ad-hoc polymorphism，假如为 `Int, Bool, MyRecord` 三种类型实现 `==`，需要编写以下三个函数：
 
 ```haskell
 (==) :: Int      -> Int      -> Bool
@@ -29,36 +33,23 @@ Philip Wadler, Stephen Blott 于 1988 年发表了论文 *How to make ad-hoc pol
 
 对于本文的例子，可以这样简单地解读上述函数签名：最后一个类型是返回值的类型，其他的类型名是参数的类型。
 
-这种方式非常与 C++ 的操作符重载非常相似，但实现起来可能需要有复杂的函数解析机制。以 C++ 标准库中的常用容器 `std::vector` 为例，我们能很自然地写出这样的代码：
+对于实现 `==`，C++ 就采用了这一种方式，上面的三个函数签名分别可以对应如下的C++函数声明：
 
-```c++
-std::vector<int> expect = { /*...*/ };
-std::vector<int> actual = get_result();
-return expect == actual;
+```C++
+bool operator==(int, int);
+bool operator==(bool, bool);
+bool operator==(MyRecord, MyRecord);
 ```
 
-然而， `vector` 和它重载的运算符 `==` 都是在 `std` 命名空间中：
 
-```c++
-namespace std {
-    template<class T, class Alloc> 
-    class vector;
-    
-    template<class T, class Alloc>
-	bool operator==(const std::vector<T,Alloc>& lhs,
-                    const std::vector<T,Alloc>& rhs);
-}
-```
-
-那么，为什么声明一个 vector 变量需要前缀 `std::`，但调用 `==` 比较两个 `vector<int>` 变量时却不需要该前缀呢？这是因为 C++ 在函数调用解析中引入了 *argument-dependent lookup*，这个机制使得编译器除了在当前的命名空间查找合适的，还会去函数实参所属的命名空间去查找合适的重载函数。
 
 ## The Parametric Way
 
-第二种方式实现相等比较是 `(==) :: a -> a -> Bool`，其中 `a` 是一个类型变量。这种是一种泛型的实现，通常只需要按类型的类别来编写常数数量的版本，即可为任意的类型实现 `==`。反过来说，任意多个类型都可能用了同一份代码来判断其相等性，这可能导致 `==` 拥有理解或不符期待的语义。
+*ad-hoc polymorphism*（特设多态），函数的定义是为每个类型特设的，例子是函数重载。
 
-接下来，以 Go 标准库的 `reflect.DeepEqual` 为例讨论这种实现。它虽然非泛型函数，但却具备类似泛型 `==` 的语义——它接收两个任意类型的参数并比较其“是否相等”。这个函数先以 Go 的类型类别的方式分别定义了基础类型的相等性（分别定义了 array, struct, func, interface, map, slice 和 pointer，类型类别定义参见 `reflect.Kind`），再基于这些定义来建立任意类型变量的相等定义 [2]。
+第二种实现方式，其签名是 `(==) :: a -> a -> Bool`，其中 `a` 是一个类型变量。这是一种泛型的实现，即 parametric polymorphism。这种方式为每个类型都定义了相等比较，通常只需要按类型的类别来编写常数数量的版本，即可为任意的类型实现 `==`，而不需挨个单独实现。换个角度说，这种方式看似最省心，多个类型都能用同一份代码来判断其相等性，但它的缺点是可能导致 `==` 的语义难以理解或不符合期待。
 
-显然，这样的实现并不能覆盖所有的 case，我们仍然需要为一些类型特设地实现相等比较，而且泛型实现的语义并非总是合乎预期。
+接下来，以 Go 标准库的 `reflect.DeepEqual` 为例讨论这种实现。它虽然非泛型函数，但却具备类似泛型版本 `==` 的语法和语义——它接收两个任意类型的参数，并比较其“是否相等”。这个函数先以 Go 的类型类别的方式分别定义了基础类型的相等性，再基于这些定义来建立任意类型变量的相等定义 [2]。其中，类型的“类别”分别定义了数组、结构体、指针、函数、`interface` 等。
 
 即使 Go 有着相对简单的类型系统，由于 `reflect.DeepEqual` 要处理任意类型的相等比较，其最终拥有比较复杂的语义。以下例子衍生自官方文档，不见得每个开发者**每时每刻都能流畅背诵**这么复杂的规则：
 
@@ -88,13 +79,17 @@ namespace std {
   ok2 := reflect.DeepEqual(s1, s2)
   ```
 
+显然，这一类泛型实现的语义并非总是合乎预期，而且伸缩性较差，我们仍然需要为一些类型特设地实现相等比较。
+
 ## Type Class
 
-第三种方式，其签名变成了 `(==) :: a(==) -> a(==) -> Bool`：只有实现了 `==` 函数的类型才可以比较。如果此处冒号左边的 `(==)` 仍然表示某个函数，这句话显然是多余的。此处的 `(==)` 表示的应当是一个超越类型本身的概念，对应着类型的属性或接口。
+第三种方式，签名变成了 `(==) :: a(==) -> a(==) -> Bool`。这种方式中，只有实现了 `==` 函数的类型才可以比较。此处的 `(==)` 不再仅仅表示某个函数，而是引入了一个超越类型本身的概念，这个概念说明了类型的属性或接口——`(==)` 意味着类型具备相等比较的接口。
 
-原文就是在这样的背景下，提出了 *type class*，它是一种有限的特设多态，调和了完全特设化（方式一）和完全参数化（方式二）。论文中以 `Num` 为例来介绍 type class 的概念。`class Num` 的声明如下：
+原文就是在这样的背景下，提出了 *type class*。它是一种基于重载的多态机制，调和了完全依赖重载的方式一和完全泛型的方式二。论文中以 `Num` 为例来介绍 type class 的概念。`class Num` 的声明如下：
 
 ```haskell
+class Eq a where
+	(==)   :: a -> a -> Bool
 class Eq a => Num a where
 	(+)    :: a -> a -> a
 	(*)    :: a -> a -> a
