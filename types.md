@@ -1,52 +1,72 @@
-# Go 语言碎碎念：多态
+# 多态
 
+## 无处不在的多态
 说到多态，你会想到什么？是 Java 的类继承与虚函数表，还是 C++ 的模板与重载决议，抑或是 Go 的 interface？
 
 > In programming language theory and type theory, polymorphism is the provision of a single interface to entities of different types or the use of a single symbol to represent multiple different types. [1]
 
-编程语言中多态性（polymorphism）的不严谨的定义是，用同一个 interface 来使用多个不同的类型。简单地说，一个函数可以运作与不同类型的参数上。此处，“函数”不能仅仅是 `func`，而是一个更抽象的概念；而“类型”指的是变量的类型，即“type”（而非“kind”）的概念。这样的定义显得含糊，本文接下来以 Go 语言的多态为主线，详细地聊一下多态。
+在编程语言中，多态性（polymorphism）指的是用同一个接口提供多个不同类型的使用。
 
-## 无处不在的多态
-如今 C++/Java 流派的面向对象编程有最广泛的使用，因此可能有不少程序员对于多态或其他计算机科学词汇的理解都建立在该流派的语境之下。说到多态，脑子里可能出现的是基于类继承实现的动态派发。然而，可以想得再简单而基础一些：各种运算符通常也是多态的！比如，相等运算符`==`。
+如今， C++/Java 流派的面向对象编程有最广泛的使用，因此可能有不少程序员对于“多态”（或其他计算机科学词汇的理解）都建立在该流派的语境之下。说到多态，脑子里可能出现的是基于类继承实现的动态派发。然而，不妨想得再简单而基础一些：把各种运算符视为函数的话，这些运算符通常也是多态的！比如，相等运算符 `==`：
 
-虽然 Go 不支持自定义运算符重载，但它的 `==` 实现却是多态的，可以类比于语言内置的重载。  
-- 对于标量原始类型，如 `int` 或 `bool`，`==` 的语义是比较标量的值是否相等，其实现一般就是一条 CPU 的 cmp 指令。  
-- 对于 `string`，`==` 比较两个字符串是否为相同的 rune 序列；又由于 Go 使用 UTF-8 编码，`==` 的实现很可能就是一条 `memcmp`（可以去这个网站查看对应的汇编代码：https://godbolt.org）。  
-- 对于 `chan`，由于其具备引用语义，比较的是两个 `chan` 变量是否引用同一个 channel 实例。  
-- 对于 `map` 或 slice，`==`仅可以把 `map` 或 slice 变量和 `nil` 值比较，检查是否进行过初始化。  
+```c++
+auto b1 = 42 == (40 + 2);
+auto b2 = vector<int>{1,2,3} == vector<int>{4,5,6};
+auto b3 = string{"Edward Yang"} == string{"David Cronenberg"};
+```
+
+上面三条 C++ 语句分别比较了一对 `int`、`vector<int>` 和 `string` 变量的值是否相等。虽然每条语句中进行比较的类型并不相同（不同类型的使用），但它们都用着同样的接口：`==`。
 
 
 ## Ad-hoc Polymorphism
-Go 中`==`所具备的多态性，类似函数或操作符重载的效果（讨论多态定义时，操作符可认为是前文所述的抽象的函数），这种多态被归类为 ad-hoc polymorphism。“ad-hoc”的意为“特设的”，这种多态指的是，根据不同类型的参数，去选择一个多态函数的调用的具体实现；而每个函数实现是根据参数类型定制的，不同的实现之间不需要存在任何联系。
+上述代码中 `==` 所具备的多态性是基于函数重载实现的，而函数重载是 *ad-hoc polymorphism*（特设多态）的主要形式——这种多态定义为一个函数可以以不同的类型的参数进行调用，并表现出不同的行为 [8]。
 
-比如上述 `int` 和 `string` 所对应的 `==` 实现，是分别根据 `int` 和 `string` 定制的；编译器会根据 `==` 左右两个参数的类型去选择正确的 `==` 实现，且不同的实现根本互不相干（cmp指令和memcmp）。
+以函数重载来说，重载能把一个函数名关联到多个独立的实现，让编译器根据调用时的上下文选择合适的实现进行调用；而每个版本的实现是根据参数类型定制的，不同的版本间不需要存在其他的联系。因此，从另一角度来说，函数重载是一种编程语言内置的派发机制  [Wiki: ad-hoc poly]；与基于泛型的多态相比，它几乎完全独立于类型系统存在。
 
-对于函数重载版本间不同的参数列表，此处也解释为不同的类型。比如一个参数列表 `(T1, T2, T3)` 可以唯一地对应到一个类型 `tuple<T1, T2, T3>`。
-
-类比同样不支持自定义操作符重载的 Java，其值类型和引用类型的 `==` 操作符分别具备多态性吗？
+函数重载的优势是几乎不会给代码引入额外的耦合性（比起为了一个函数要继承一个类的情况）；但它缺乏扩展性：它只能以单个函数为单位实现多态，没法表达一个多态函数集合构成的接口，也没法针对一组具有相同接口的类型共用同一份实现。
 
 ## Parametric Polymorphism
-Go 中有另一种更显而易见的多态，那就是 `map` 和 slice 类型的操作。以 slice 为例，对于每个类型 `T`，`[]T` 都是不同的类型；但是 `[]T` 作为 `len()`、`[]`、`append()` 等函数的参数时，这些函数处理具体的值的逻辑都是一样的，而与具体的 `T` 无关。这一类函数逻辑不依具体类型而定的多态，被称为 parametric polymorphism，使用这种多态进行编程有个更为人熟悉的名字：泛型编程（generic programming）。
+在实现通用数据结构和算法时，我们通常希望只编写一份代码，但能作用于无限多种类型。比如编写一款动态数组，我们希望动态数组的代码能用于任意的元素类型，因为对于动态数组各种操作，无论是追加元素还是访问元素，其逻辑都与元素的类型无关。当然，这里还有个隐性的需求是，动态数组还应保留元素类型的信息。
 
-比如，用 Go 的泛型语法来描述 slice 与 `len()` 函数，它们可能长下面这样：
-```go
-// see reflect.SliceHeader
-type Slice[T any] struct {
-    data *T
-	len  int
-	cap  int
-}
+对于以上的要求，人们（具体点，ML 语言的贡献者们）引入了类型变量来替代函数的参数类型；待到在代码中被调用时，才根据实参类型替换类型变量。而这种多态直白地称为 *parametric polymorphism*（参数多态）。
 
-func (s *Slice[T]) Len() int {
-    return s.len
-}
-```
+一个 parametric polymorphism 的函数在一组类型上都有定义，而这一组类型通常共同具备某种接口。由于同一个函数定义不再拘束于单一类型，这种多态又得名 *generic programming*（泛型编程）。
 
-不论`T`的实际类型是什么，每个由 `slice[T]` 实例化得到类型都有一个 `len` 字段，这是 `Len()` 方法能够运作的基础。由此引出，假设一个 parametric polymorphism 函数所能作用的参数类型的集合为 `G`，那么 `G` 中的 `T` 都需要具备某种结构或性质。在很多具备泛型特性的编程语言中，类型约束（type constraint）就对应上述抽象的`G`，它描述了泛型函数的类型参数的结构或接口。
+// copy-pasted
 
-举一个简单的例子，`map` 的键类型必须满足 Comparable 的约束，Comparable 类型能通过`==`和`!=`操作符比较相等性，否则实例化的`map`无法判断键值是否相等。根据 Go spec [2]：“... comparable types are boolean, numeric, string, pointer, channel, and interface types”。
+第二种实现方式，其签名是 `(==) :: a -> a -> Bool`，其中 `a` 是一个类型变量。这是一种泛型的实现，即 parametric polymorphism。这种方式为每个类型都定义了相等比较，通常只需要按类型的类别来编写常数数量的版本，即可为任意的类型实现 `==`，而不需挨个单独实现。换个角度说，这种方式看似最省心，多个类型都能用同一份代码来判断其相等性，但它的缺点是可能导致 `==` 的语义难以理解或不符合期待。
 
-当前，Go 泛型主要通过复用已有的 interface 特性来表达类型限制；而上述的 Comparable 目前只能由编译器内置实现。
+接下来，以 Go 标准库的 `reflect.DeepEqual` 为例讨论这种实现。它虽然非泛型函数，但却具备类似泛型版本 `==` 的语法和语义——它接收两个任意类型的参数，并比较其“是否相等”。这个函数先以 Go 的类型类别的方式分别定义了基础类型的相等性，再基于这些定义来建立任意类型变量的相等定义 [2]。其中，类型的“类别”分别定义了数组、结构体、指针、函数、`interface` 等。
+
+即使 Go 有着相对简单的类型系统，由于 `reflect.DeepEqual` 要处理任意类型的相等比较，其最终拥有比较复杂的语义。以下例子衍生自官方文档，不见得每个开发者**每时每刻都能流畅背诵**这么复杂的规则：
+
+- Go 的函数变量只能与 `nil` 值进行比较，否则是编译错误；但 `reflect.DeepEqual` 会毫无怨言地帮你进行比较：
+
+  ```go
+  foo := func() error { return nil }
+      
+  // false
+  ok1 := reflect.DeepEqual(foo, foo)
+      
+  // invalid operation: foo == foo (func can only be compared to nil)
+  ok2 := (foo == foo)
+  ```
+
+- Go 所谓的空 slice 比较也很 tricky：指向长度为 0 的数组的指针和 nil 指针并不相等，因此：
+
+  ```go
+  // 再次敲响警钟，
+  // 不要把pointer value用作object identity
+  s1, s2 := []int{}, []int(nil)
+  
+  // true
+  ok1 := len(s1) == len(s2)
+  
+  // false
+  ok2 := reflect.DeepEqual(s1, s2)
+  ```
+
+显然，这一类泛型实现的语义并非总是合乎预期，而且伸缩性较差，我们仍然需要为一些类型特设地实现相等比较。
 
 ## Subtype Polymorphism
 Java 大量使用了继承的概念，Java 中基于继承（此处包括`extends` superclass 和`implements` interface两类情况）和虚函数实现的多态可能是很多程序员最熟悉的一种多态，这种多态被称为 subtype polymorphism（又称 inclusion polymorphism）。
@@ -84,6 +104,35 @@ public static <T> void sort(T[] a,
 
 事实上，Alan Kay 曾在一场 talk 中谈到，他认为面向对象编程最脆弱的地方之一，是依赖程序员能按照接口的语义去编写代码，仅仅满足接口的输入、输出类型不能满足他对“面向对象编程”的定义 [4]。 
 
+// copy-pasted: bounded quantification
+
+函数式编程并非与命令式或面向对象等范式水火不容，他们总是有千丝万缕的联系。前文通过举例说明了 type class 在函数式语言 haskell 中作为类型约束机制的应用，本节将以 Java 泛型为例，来讨论 OOP 中基于接口继承的类型约束。
+
+试想如下情景：我们在 OOP 中引入泛型编程时，如何约束类型参数？尝试为 Java 编写一个泛型的查找函数：
+
+```Java
+<T> int find(ArrayList<T> list, Predicate<T> pred)
+```
+
+抽象地说，泛型函数作用于拥有同样接口的类型。在本例中，`find` 要求 `pred.test` 方法必须拥有 `T -> boolean` 的签名。然而，如果 `T` 继承了某个 `class S` （或实现了某个  `interface S`），且这个断言也仅需用到 `S` 的接口，那么上述函数签名会阻碍使用 `Predicate<S>` ，而需要额外实现一个 `Predicate<T>`。
+
+因此，假设有 `ArrayList<T>` 和 `Predicate<U>`，`find` 并不要求 `T == U`，而只需要 `T` 是 `U` 的 subtype 即可。先来看 Java 语境下 subtype 关系的定义：对于类型 `T`， 如果它继承 `class U` 或实现 `interface U`，则称 `T` 是 `U` 的 subtype，记为 `T <: U`。可见，subtype 总是拥有 supertype 的接口，对应着 type class 的成员类型总是拥有 type class 的接口。
+
+既然，Java 中的继承体系就是一个 subtype 体系，那么 Java 或其他 OOP 语言便可以利用 subtype 关系来做类型约束。这个泛型与 subtype 两种多态发生交互的场景，最终引出了 *bounded quantification* 的定义：它基于 `<:` 的关系来约束类型参数。这个术语的严谨定义和相关讨论可以参考 *Types And Programming Language, Chapter 26* [3]，本文处理概念还是以感性认识为主。
+
+在 Java 类型约束中：
+
+- upper bound（`? <: T`）写作 `? extends T`；
+- lower bound （`T <: ?`）写作 `? super T`。
+
+因此， `find` 的签名应改为：
+
+```java
+<T> int find(ArrayList<T> list, Predicate<? super T> pred)
+```
+
+
+
 ## Go Interface
 
 Go 和 Java 一样也有 `interface` 用于说明一个类型的行为，并以一组方法签名来定义。比如 `context.Context` 的定义为以下一组方法：
@@ -114,9 +163,103 @@ type Iterator[T] interface {
 }
 ```
 
+## Type Class
 
+第三种方式，签名变成了 `(==) :: a(==) -> a(==) -> Bool`。这种方式中，只有实现了 `==` 函数的类型才可以比较。此处的 `(==)` 不再仅仅表示某个函数，而是引入了一个超越类型本身的概念，这个概念说明了类型的属性或接口——`(==)` 意味着类型具备相等比较的接口。
 
-举例 C++ template 也有类似功效
+原文就是在这样的背景下，提出了 *type class*。它是一种基于重载的多态机制，调和了完全依赖重载的方式一和完全泛型的方式二。论文中以 `Num` 为例来介绍 type class 的概念。`class Num` 的声明如下：
+
+```haskell
+class Eq a where
+	(==)   :: a -> a -> Bool
+class Eq a => Num a where
+	(+)    :: a -> a -> a
+	(*)    :: a -> a -> a
+	negate :: a -> a
+```
+
+这段声明意味着：
+
+1. 类型 `a` 属于 `class Eq`（这个 type class实现了相等比较），是 `a` 属于 `Num` 的必要条件。这一点展示了 type class 的组合能力，熟悉 OOP 继承的读者可以想象 type class 间基于组合关系形成的 hierarchy。
+2. 在满足 1. 的基础上，如果类型 `a` 具备 `+`, `*` 和 `negate` 函数，则 `a` 属于 `class Num`。
+
+我们通过 `instance` 关键字和定义 type class 要求的函数，将一个类型实现为某个 type class 的成员：
+
+```haskell
+instance Num Int where
+	(+)    = addInt
+	(*)    = mulInt
+	negate = negInt
+```
+
+这段代码需要注意的另外一点是，type class 更多是一种 ad-hoc polymorphism。上面这段代码在为 `Int` 实现 `Num` 的接口时，虽然提到了后者，但这段代码是与类型 `Int` 的定义相分离的，这一点与 Java 或 C++ 为首的“OOP 语言”不同。这种 OOP 并不显式地区分代码和接口继承，因此实现接口意味着侵入式地修改类型的声明与定义；而为一个类型实现 type class 时，是结构化地为该类型定义了一组重载函数。
+
+要使用 type class 时，可以声明一个函数仅于属于某 type class 的类型之上有定义。例如，我们声明多态的平方函数仅在属于 `Num` 的类型上有定义：
+
+```haskell
+-- 类型参数a只能是属于Num的类型
+square :: Num a => a -> a -- 签名
+square x =  x * x         -- 定义
+```
+
+小结一下，type class 可以视作一种类型的约束机制（原文的用词是 *bounded quantifier*）。Type class 的定义描述了类型的接口；而一个类型属于某个 type class，等价于这个类型具备该 type class 要求的接口。看到这里，熟悉 OOP 方法论的读者可能会说，interface 也是一组方法的集合，难道 type class 就是发明了一次 interface（如果不是又一次）？
+
+其实，从编程语言的角度上来看，这两个概念还是泾渭分明的：type class 不是类型，但具体的 interface 通常是一个类型。OOP 里的 interface 是 subtype polymorphism 的一种应用：如果类型 S 是类型 T 的 subtype 关系（记为 S <: T），意味着可以在期待 T 对象之处，用 S 对象安全地替换 T 使用（此处关联里氏替换原则）。然而 type class 不是类型，那么某个类型与其所属的 type class 之间就没有所谓可替换性一说了。
+
+## C++ Concept
+
+原文中提到，用翻译来引入 type class 的问题之一，就是多态函数将会依赖动态派发的。然而，如果在编译时能通过类型实参来确定多态函数实际需要使用的函数，便能够针对性地生成多态函数的特化版本，以代码体积上升的代价换取运行时的性能。这方面最为人熟知的例子之一，就是 C++ template。
+
+C++ template 类似于语言内置的宏或代码生成特性，对于一个 template，编译器会为其每一组不同的实参生成一份代码。而 C++ 20 标准引入的用于约束或限制 template 的特性 concepts，其语法和功能都能听见 type class 的回响。
+
+比如，定义一个 concept，要求类型参数为支持相等比较的类型：
+
+```c++
+template <typename T>
+concept eq = requires(T a, T b) {
+    { a == b } -> std::convertible_to<bool>;
+};
+```
+
+这个 `concept eq` 是不是很像上文中的 type class ` Eq` 呢：
+
+```haskell
+class Eq a where 
+    (==) :: a -> a -> Bool
+```
+
+进一步地，再定义一个 concept 要求偏序比较，并将同时满足相等和偏序比较的类型称为可比较 `comparable`，可见 concept 也和 type class 或 Go interface 有易用的组合性：
+
+```C++
+template <typename T>
+concept less = requires(T a, T b) {
+    { a < b } -> std::convertible_to<bool>;
+};
+
+template <typename T>
+concept comparable = eq<T> && less<T>;
+```
+
+再看 concept 的实现，由于 concept 是在 template 层面的，与传统意义的类继承几乎平行，我们也可以像实现 type class 那样以 ad-hoc polymorphism 的方式来实现concept——其实就是写重载函数。
+
+```C++
+struct person {
+	std::string id;
+    std::string name;
+};
+
+bool operator==(const person& lhs, const person& rhs) {
+    return lhs.id == rhs.id;
+}
+
+bool operator<(const person& lhs, const person& rhs) {
+    return lhs.name < rhs.name;
+}
+
+static_assert(comparable<person>); // true
+```
+
+可以看到，concept 的不同之处在于，template 之于类型有着类似 *structural typing* 语法（俗称 duck typing），所以实现某个 concept 不需要提及它；但反过来说，由于 concept 作用的 template 层面与其他语言特性所在的层次有距离感，其使用体验便不足 type class 的那般丝滑。事实上，C++ 长期被 template 把语言生态割裂得两极分化，是不利于社区发展的。
 
 ## 参考链接
 
