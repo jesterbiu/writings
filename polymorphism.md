@@ -1,6 +1,14 @@
 # 多态
 
+- Why do we need polymorphism? using examples from the type-class paper. 
+  - Polymorphism means that a value may have multiple types. Why need multiple types? Why need types at all?
+- How do we achieve that? introduce various kinds of polymorphism in some clear distinct ways: parametric (C++ template - ish), ad-hoc (operator overloading).
+- How do they evolve with each other? The expressiveness  is limited using only one kind of polymorphism at a time, thus almost all PLs employ more various 
+
+
+
 ## 无处不在的多态
+
 说到多态，你会想到什么？是 Java 的类继承与虚函数表，还是 C++ 的模板与重载决议，抑或是 Go 的 interface？
 
 > In programming language theory and type theory, polymorphism is the provision of a single interface to entities of different types or the use of a single symbol to represent multiple different types. [1]
