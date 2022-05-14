@@ -1,7 +1,5 @@
 # 多态
 
-- Why do we need polymorphism? using examples from the type-class paper. 
-  - Polymorphism means that a value may have multiple types. Why need multiple types? Why need types at all?
 - How do we achieve that? introduce various kinds of polymorphism in some clear distinct ways: parametric (C++ template - ish), ad-hoc (operator overloading).
 - How do they evolve with each other? The expressiveness  is limited using only one kind of polymorphism at a time, thus almost all PLs employ more various 
 
@@ -9,29 +7,47 @@
 
 ## 无处不在的多态
 
-说到多态，你会想到什么？是 Java 的类继承与虚函数表，还是 C++ 的模板与重载决议，抑或是 Go 的 interface？
+> what is type and why do we need it?
 
-> In programming language theory and type theory, polymorphism is the provision of a single interface to entities of different types or the use of a single symbol to represent multiple different types. [1]
+起初，编程语言中并没有所谓“类型”的概念，程序员看到的数据都是存储器中的比特串（bit string）。此时，唯一接近类型的概念，就是“字”（word）——机器寄存器大小的定长比特串；比特串只是程序或数据的**二进制表示**（representation），其具体的含义则只能从对比特串的**解释**（interpretation）中获得。
 
-在编程语言中，多态性（polymorphism）指的是用同一个接口提供多个不同类型的使用。
+然而，程序员会将串解读为字符、数字、指针或者指令等不同种类的数据，这些数据都有各自的用途或行为。这种分类的开始，也标志着类型系统的演化的开始。
 
-如今， C++/Java 流派的面向对象编程有最广泛的使用，因此可能有不少程序员对于“多态”（或其他计算机科学词汇的理解）都建立在该流派的语境之下。说到多态，脑子里可能出现的是基于类继承实现的动态派发。然而，不妨想得再简单而基础一些：把各种运算符视为函数的话，这些运算符通常也是多态的！比如，相等运算符 `==`：
+一个“类型”的概念，主要包括对比特串的解释及其操作的限制。比如，如果一个比特串 `1100001` 被记为整型变量，那么应该按整型的编码去解释它的值，使用 two's complement 可得这个串对应的十进制整型为 97。如果按照其他类型解释它，则可能导致程序产生非预期的行为：按字符类型解释，使用 ASCII 会得到值为英文字符  `a`；按指针类型解释，可以得到地址为 `0x61`——用这个值去寻址可能会导致内存错误。
 
-```c++
-auto b1 = 42 == (40 + 2);
-auto b2 = vector<int>{1,2,3} == vector<int>{4,5,6};
-auto b3 = string{"Edward Yang"} == string{"David Cronenberg"};
+如今，大部分编程语言都有类型系统，类型系统很大程度上保证了程序是“类型安全”的——程序对于一个值的解释是前后一致的，不会在值上执行其类型不允许的操作（比如上述的把整型直接当指针用）。
+
+> Why do we need polymorphism, that a value may have multiple types? using examples from the type-class paper. 
+
+然而，一些编程语言的类型系统只允许每个值有唯一的类型（如 Pascal, C），无论这个值是函数或是函数的参数类型。这种语言被称为**单态的**（monomorphic）。但在实际编程中，经常遇到需要为不同的类型实现同一种操作的情况，比如变量的相等性比较。
+
+如果每个函数只允许拥有一种类型，每个需要比较相等的类型就需要各编写一个不重名的函数，代码相对冗长。比如，为整型、字符串和列表类型编写相等比较，可能就有如下的三个不同的函数声明：
+
 ```
-
-上面三条 C++ 语句分别比较了一对 `int`、`vector<int>` 和 `string` 变量的值是否相等。虽然每条语句中进行比较的类型并不相同（不同类型的使用），但它们都用着同样的接口：`==`。
+// 单态的相等比较
+bool equal_int(int a, int b);
+bool equal_str(string a, string b);
+bool equal_lst(list a, list b);
+```
 
 
 ## Ad-hoc Polymorphism
-上述代码中 `==` 所具备的多态性是基于函数重载实现的，而函数重载是 *ad-hoc polymorphism*（特设多态）的主要形式——这种多态定义为一个函数可以以不同的类型的参数进行调用，并表现出不同的行为 [8]。
+对于这个问题，一种解决方案是**函数重载**（function overloading）。函数重载机制能把一个函数名关联到多个类型不同的实现，由编译器根据调用上下文选择合适的版本进行调用：
 
-以函数重载来说，重载能把一个函数名关联到多个独立的实现，让编译器根据调用时的上下文选择合适的实现进行调用；而每个版本的实现是根据参数类型定制的，不同的版本间不需要存在其他的联系。因此，从另一角度来说，函数重载是一种编程语言内置的派发机制  [Wiki: ad-hoc poly]；与基于泛型的多态相比，它几乎完全独立于类型系统存在。
+```
+// 基于函数重载的相等比较
+bool equal(int a, int b);
+bool equal(string a, string b);
+bool equal(list a, list b);
+```
 
-函数重载的优势是几乎不会给代码引入额外的耦合性（比起为了一个函数要继承一个类的情况，比如 Java 的 `Runnable`）；但它缺乏扩展性：它只能以单个函数为单位实现多态，没法表达一个多态函数集合构成的接口，也没法针对一组具有相同接口的类型共用同一份实现。
+大部分编程语言以重载操作符的形式，在语言里内置了字节、整型及浮点数等原始数据类型的相等比较，并以库的形式提供字符串、列表等数据结构的相等比较。比如，在 C++ 中为一个类型实现相等比较的惯例作法为其重载 `==` 操作符（操作符重载本质也是函数重载）；更有甚者，在类型系统设计上从简的 Go 把字符串重载的 `==` 也内置到语言里去了。
+
+因为上述的 `equal` 在重载后可以被解释为不同的函数类型，所以它是多态的（polymorphic）——函数重载在几乎不影响类型系统的前提下，为编程语言引入了多态性。从另一角度来说，函数重载可以视作一种编程语言内置的派发机制  [Wiki: ad-hoc poly]；与后文介绍的其他多态相比，它几乎完全独立于类型系统存在。
+
+在编程语言理论里，函数重载是**特设多态**（ad-hoc polymorphism）的主要形式。而特设多态定义为，同一个值在被解释为不同类型时能表现出不同的行为 [8]。在基于重载的相等函数一例中，相等函数名 `equal` 就是这个多态的值。
+
+函数重载的优势是几乎不会给代码引入额外的耦合性（比起为了一个函数要继承一个类的情况，比如 Java 的 `Runnable`）；但它缺乏扩展性，因为它通常以单个函数为单位实现多态，无法表达一组多态函数构成的接口。
 
 ## Parametric Polymorphism
 在实现通用的数据结构或算法时，我们通常希望仅实现每个数据结构或算法一次，但这份实现可以用于无限多种类型。比如编写一款动态数组，我们希望动态数组的代码能用于任意的元素类型，因为对于动态数组各种操作，无论是追加元素还是访问元素，其逻辑都与元素的类型无关。当然，这里还有个隐性的需求是，动态数组还应保留元素的类型信息。
