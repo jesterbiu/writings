@@ -2,6 +2,7 @@
 
 - How do we achieve that? introduce various kinds of polymorphism in some clear distinct ways: parametric (C++ template - ish), ad-hoc (operator overloading).
 - How do they evolve with each other? The expressiveness  is limited using only one kind of polymorphism at a time, thus almost all PLs employ more various 
+- TBD: fix ref 
 
 
 
@@ -25,9 +26,9 @@
 
 ```
 // 单态的相等比较
-bool equal_int(int a, int b);
-bool equal_str(string a, string b);
-bool equal_lst(list a, list b);
+bool equal_int(int a, int b)
+bool equal_str(string a, string b)
+bool equal_lst(list a, list b)
 ```
 
 
@@ -36,9 +37,9 @@ bool equal_lst(list a, list b);
 
 ```
 // 基于函数重载的相等比较
-bool equal(int a, int b);
-bool equal(string a, string b);
-bool equal(list a, list b);
+bool equal(int a, int b)
+bool equal(string a, string b)
+bool equal(list a, list b)
 ```
 
 大部分编程语言以重载操作符的形式，在语言里内置了字节、整型及浮点数等原始数据类型的相等比较，并以库的形式提供字符串、列表等数据结构的相等比较。比如，在 C++ 中为一个类型实现相等比较的惯例作法为其重载 `==` 操作符（操作符重载本质也是函数重载）；更有甚者，在类型系统设计上从简的 Go 把字符串重载的 `==` 也内置到语言里去了。
@@ -60,38 +61,71 @@ bool equal(list a, list b);
 
 ```
 // 使用尖括号添加类型参数
-type array<T>;
-void sort(array<T>);
+type array<T>
+void sort(array<T>)
 
 // 使用时，实例化参数多态的类型
-array<int> arr;
-sort(arr);
+array<int> arr
+sort(arr)
 ```
 
 在实现方面，为编程语言引入参数多态通常需要不小的工作量。
 
-首先，参数多态需要向类型系统中添加类型实例化的算法：对于给定的参数多态值和上下文，尝试实例化合法的类型。合法类型的定义经常与语言的规范和实现有深刻的关系。以 Java 为例，由于其泛型（generic，参数多态的别名）实现基于“类型擦除” [source?]，所以泛型类型的类型实参不得是原生类型，形如 `ArrayList<int>` 的就属于非法类型。
+首先，参数多态需要向类型系统中添加类型实例化的算法：对于给定的参数多态值和上下文，尝试实例化出合法的类型，而合法类型的定义通常与语言的规范和实现有深刻的关系。以 Java 为例，由于其泛型（generic，参数多态的别名）实现基于“类型擦除” [source?]，所以泛型类型的类型实参不得是原生类型，形如 `ArrayList<int>` 的就属于非法类型。
 
 另一方面，参数多态的内存管理也是个困难的问题。由于参数多态对不同类型一视同仁，那么编译器或运行时如何确定程序的内存布局呢？
 
 - 对于带垃圾回收的语言，通常倾向于用指针（引用）来多态类型的内存布局，并通过添加对象头等结构来保留类型信息。这种方式使得实例化产生的代码趋同，比如 Java 的泛型容器对不同元素类型都使用同一份字节码。
-- 对于不带垃圾回收的语言，更倾向于给每个不同类型实参实例化一个版本，从而确定内存布局。C++ 基于 template 来实现参数态，编译器会对每一组不同的模板实参实例化一个具体的类型或函数，从而避免使用指针来覆盖不同的类型——因为指针不可地避免涉及对象的生命周期管理乃至堆分配，这些问题引入的复杂度和开销是难以估量的。
+- 对于不带垃圾回收的语言，更倾向于给每个不同类型实参实例化一个版本，从而确定内存布局。比如，C++ 基于 template 来实现参数多态，编译器会对每一组不同的模板实参实例化一个具体的类型或函数，从而避免使用指针来覆盖不同的类型——因为指针不可地避免涉及对象的生命周期管理乃至堆分配，这些问题引入的复杂度和开销是难以估量的。
 
-// continue here
+// 这部分是否放到后面去？
 
 此外，需要考虑参数多态与语言中其他特性的交互：为什么C++ template或Java generic允许递归的类型定义（curiously reccuring template pattern)，为什么 Go generic不允许parameterized method？
 
-## Subtype Polymorphism
+## Subtyping
 
-在编程语言社区中，“多态”一词的内涵是含混不清的。在“面向对象编程”的范式中，这个词通常指的是子类型多态，并将参数多态成为“泛型”（generic programming）。
+面向对象编程是基于“对象”概念的一种编程范式，这种对象捆绑了数据和操作这些数据的函数（称为方法），程序则由对象之间通过方法进行的交互构成。这种作法屏蔽了数据的实现细节，从而提高程序的封装性，以对抗软件日益增长的复杂度。
 
-Java 大量使用了继承的概念，Java 中基于继承（此处包括`extends` superclass 和`implements` interface两类情况）和虚函数实现的多态可能是很多程序员最熟悉的一种多态，这种多态被称为 subtype polymorphism（又称 inclusion polymorphism）。
+常见的面向对象语言基于“类”（class-based）的概念，类是对象的定义，包括对象的字段和方法，同时也是类型定义。类的导出方法（或公共方法）构成的集合又叫称为“接口”（interface），因为类的导出方法决定了如何使用该类的对象。
 
-需要注意的是，广义的继承（inheritance in computer science），目的是代码复用，而非规定如何处理接口或类型关系；但在 Java 中，subclass 不仅继承了 superclass 的代码，也继承了 superclass 的接口，声明了 subclass 为 superclass 的 subtype（子类型，为 了避免与“子类”混淆，本文此处还是用英文）。 GOF 和 [10] 也讨论了这个区别，并将 subtype 称为接口继承（interface inheritance）[7]。
+面向对象编程鼓励针对对象的接口进行编程，而不是对象的具体类型。例如，假设有一个函数 `process_file` 需要通过读取字符串来处理一个文件，且 `process_file` 不关注数据的源头，它只需要读取到字符串即可。那么，可以如此编写该函数的签名，及其入参的类接口：
 
-Subtype 的定义为一种类型间的关系：设有两个类型 S 和 T，S 是 T 的 subtype，则 S 类型的元素可以被“安全地”用于期待 T 的上下文中（如何满足“可替换性”还与具体的编程语言或编程准则相关）。这个关系意味着类型间的可替换性（substitutability）。显然，subtype 与代码复用的重点不同：前者从 supertype 获取的是接口及其语义，后者获取的是代码实现（implementation），没有默认实现的 Java interface 相比 class inheritance 更接近 subtype 的定义。
+```
+void process_file(string_stream r) {
+	for r.has_more() {
+		process(r.read())
+	}
+}
+class string_stream { 
+	string read()
+	bool has_more()
+}
+```
 
-此处不再赘述基于继承和虚函数实现的多态，而是来讨论另一个问题：Java 于 SE 5 引入了泛型特性，那么 subtype 和泛型相遇时会是什么情况呢？
+由于字符串可能来自磁盘文件，也可能来自网络传输，此处又分别用不同的类来处理这两种数据源：
+
+```
+class file { 
+	string read() // 从磁盘文件读取字符串
+	bool has_more()
+	void close()
+}
+class http_response { 
+	string read() // 从http回复读取字符串
+	bool has_more()
+	http_request get_request()
+}
+```
+
+显然， `string_stream` 的接口是 `file` 或 `http_response` 接口的子集。那么，在程序语法上，可以认为把后二者的对象当作 `string_stream` 对象使用安全的。这便引出了面向对象编程中的“多态”：
+
+>  需要区分的是，类继承（inheritance）和子类型多态是不同的概念。根据编程语言的具体情况，类继承可能同时继承了基类的接口和实现，但只有继承接口是为了实现子类型多态，而继承实现是为了代码复用（code reuse）。比如，C++ 或 Java 的类继承就是同时继承实现和接口的；相较之下，Java 的 interface 更单纯地实现了子类型多态。
+
+子类型的定义中强调一种类型间的可替代关系：假设 S 是 T 的子类型，那么 S 类型的元素可以被安全地用于期待 T 的上下文中。这种安全的可替换性通常被称为里氏替换原则（Liskov substitution principle），由 Barbara Liskov 于 80 年代的一场演讲中而为人所知。
+
+子类型多态中的“安全替换”有两层概念：一是在代码的语法上，子类型确实拥有父类型的接口；二是在其语义上，子类型的确实现了接口所声称的行为。举例来说，Java 的 `Comparator` 接口的文档中，对该接口 `compare()` 方法的语义有详细的描述，要求了分别在什么情况下返回正数和负数、方法必须具备传递性等 [5]。
+
+然而，在大部分情况下，编译器或其他检查工具无从证明代码是否正确地实现了上述语义（完全的证明等价于 the halting problem），而只能校验程序语法的正确性。因此，接口语义一般以文档方式记载，是一种“君子协议”。Alan Kay （面向对象设计先驱之一）曾在一场 talk 中谈到面向对象编程最脆弱的地方之一，就是依赖程序员能按照接口的语义去编写代码；仅仅在语法上满足接口的输入、输出类型不能满足他对“面向对象编程”的定义 [4]。
 
 *可选内容*：subtype 还会遇到另一个问题：covariance 与 contravariance。Variance 指的是：
 
@@ -100,56 +134,29 @@ Subtype 的定义为一种类型间的关系：设有两个类型 S 和 T，S �
 - covariance：`Integer extends Number`，那么`ArrayList<Number>` 与 `ArrayList<Integer>`具备超类子类关系吗？
 - contravariance：`Function<Number, String>` 是 `Function<Integer, String>` 的子类？如果有个地方期待后者，我可以塞一个前者进去正常运行？
 
-## Subtype is Cross-Cutting
+## Subtyping is Cross-Cutting
 
-目前提到的三种多态彼此不是互斥的，而是是会相互作用的，其中又以 subtype 体现得最为明显。接下来我们来讨论 subtype 与其他多态的交叉作用。前文提到，在 parametric polymorphism 或者泛型中，多态的运作依赖于类型的共同结构或接口；而 subtype 关系正好就定义了类型间的共同接口。
+目前，我们已经归纳出了三种重要的基本多态类型。然而，从它们的定义可以看出，它们彼此不是互斥的，而是可以相互作用的。其中，又数子类型多态与其他类型的交互最为人所熟知。
 
-比如，Java 泛型中通过 `extends `和 `super` 关键字表达类型约束，这两个关键字用于分别限制类型参数在其继承体系中的上界和下界。这种使用 subtype hierarchy 上下界限来做约束的方法不是一种巧合 todo，而是编程语言学界自1980年代便开始研究的问题，它的学名是 bounded quantification [8]。
+在参数化多态（泛型）中，代码能够不依赖具体类型编写具备一个前提，那就是其作用的类型都具备共同结构或接口。比如一个泛型的排序算法，它其实假设了被排序的元素是存在某种偏序关系的。因此，在保证类型安全的前提下，需要限制元素的类型为可以比较顺序的类型。
 
-举例来说，比如，泛型的`Arrays.sort`其函数签名如下：
+而在面向对象编程中，对象可以进行比较的性质通常以方法的形式表达，且子类型多态的定义正好就基于了类型间的共同接口（子类型会拥有父类型的接口）。因此，可以利用子类型关系来表达参数类型的要求或限制——它的正式名称是 *bounded quantification* [8]。
+
+Java 的泛型便利用了子类型关系来进行类型参数约束：
+
+- 要限制类型参数为类型 `T` 子类型，使用表达式 `? extends T `，基于继承体系形象地称为“上界”（upper bound）。
+- 要限制类型 `T` 为类型参数的父类型，使用表达式 ` ? super T` ，称为“下界”（lower bound）。
+
+举例来说，泛型的 `Arrays.sort` 的函数签名如下：
 
 ```java
-public static <T> void sort(T[] a,
-            int fromIndex,
-            int toIndex,
+public static <T> void sort(
+            T[] a, int from, int to,
             Comparator<? super T> c)
 ```
-这个函数声明的类型形参为 `T`，可以看到 `Comparator<? super T>` 约束其类型参数的下界为 `T`，意味着该 `c` 必须能够消费（consume）类型 `T` 的变量进行比较。而参数 `T`  再次出现在 `Comparator` 的参数列表中，被称为todo？
+这个函数对 `T` 类型的数组进行排序， `Comparator<? super T>` 限制了其类型参数的下界为 `T`，意味着这个 `Comparator` 必须能够消费（consume）类型 `T` 的变量进行比较。假设 `T` 是 `Integer`， 且 `Integer` 是 `Number` 的子类型，那么就可以使用一个 `Comparator<Number>` 对象作为最后一个参数（ `Number super Integer`）。
 
-然而，上述 `sort` 例子的引出出一个问题，那就是 subtype 在 type theory 中体现止步于编程语言的语法层面，而面向对象编程中常提到的里氏替换原则（Liskov substitution principle）却是语义上的。后续基于里氏原则提出的严谨概念是 behavioral subtyping，对于多态的行为作出了要求 [3]。在 `Comparator` 一例中，虽然 Oracle 的文档中对`Comparator<T>.compare()`的语义有详细的描述 [5]，但代码是否正确地实现了该语义却完全取决于程序员，编译器无从判断。
-
-事实上，Alan Kay 曾在一场 talk 中谈到，他认为面向对象编程最脆弱的地方之一，是依赖程序员能按照接口的语义去编写代码，仅仅满足接口的输入、输出类型不能满足他对“面向对象编程”的定义 [4]。 
-
-// copy-pasted: bounded quantification
-
-函数式编程并非与命令式或面向对象等范式水火不容，他们总是有千丝万缕的联系。前文通过举例说明了 type class 在函数式语言 haskell 中作为类型约束机制的应用，本节将以 Java 泛型为例，来讨论 OOP 中基于接口继承的类型约束。
-
-试想如下情景：我们在 OOP 中引入泛型编程时，如何约束类型参数？尝试为 Java 编写一个泛型的查找函数：
-
-```Java
-<T> int find(ArrayList<T> list, Predicate<T> pred)
-```
-
-抽象地说，泛型函数作用于拥有同样接口的类型。在本例中，`find` 要求 `pred.test` 方法必须拥有 `T -> boolean` 的签名。然而，如果 `T` 继承了某个 `class S` （或实现了某个  `interface S`），且这个断言也仅需用到 `S` 的接口，那么上述函数签名会阻碍使用 `Predicate<S>` ，而需要额外实现一个 `Predicate<T>`。
-
-因此，假设有 `ArrayList<T>` 和 `Predicate<U>`，`find` 并不要求 `T == U`，而只需要 `T` 是 `U` 的 subtype 即可。先来看 Java 语境下 subtype 关系的定义：对于类型 `T`， 如果它继承 `class U` 或实现 `interface U`，则称 `T` 是 `U` 的 subtype，记为 `T <: U`。可见，subtype 总是拥有 supertype 的接口，对应着 type class 的成员类型总是拥有 type class 的接口。
-
-既然，Java 中的继承体系就是一个 subtype 体系，那么 Java 或其他 OOP 语言便可以利用 subtype 关系来做类型约束。这个泛型与 subtype 两种多态发生交互的场景，最终引出了 *bounded quantification* 的定义：它基于 `<:` 的关系来约束类型参数。这个术语的严谨定义和相关讨论可以参考 *Types And Programming Language, Chapter 26* [3]，本文处理概念还是以感性认识为主。
-
-在 Java 类型约束中：
-
-- upper bound（`? <: T`）写作 `? extends T`；
-- lower bound （`T <: ?`）写作 `? super T`。
-
-因此， `find` 的签名应改为：
-
-```java
-<T> int find(ArrayList<T> list, Predicate<? super T> pred)
-```
-
-
-
-## Go Interface
+## Go Interface: ad-hoc x subtyping
 
 Go 和 Java 一样也有 `interface` 用于说明一个类型的行为，并以一组方法签名来定义。比如 `context.Context` 的定义为以下一组方法：
 
@@ -179,7 +186,7 @@ type Iterator[T] interface {
 }
 ```
 
-## Type Class
+## Type Class: ad-hoc x parametric
 
 第三种方式，签名变成了 `(==) :: a(==) -> a(==) -> Bool`。这种方式中，只有实现了 `==` 函数的类型才可以比较。此处的 `(==)` 不再仅仅表示某个函数，而是引入了一个超越类型本身的概念，这个概念说明了类型的属性或接口——`(==)` 意味着类型具备相等比较的接口。
 
