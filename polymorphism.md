@@ -46,9 +46,9 @@ bool equal(list a, list b)
 
 因为上述的 `equal` 在重载后可以被解释为不同的函数类型，所以它是多态的（polymorphic）——函数重载在几乎不影响类型系统的前提下，为编程语言引入了多态性。
 
-在编程语言理论里，函数重载是**特设多态**（ad-hoc polymorphism）的主要形式。特设多态定义是，同一个值能与多个单独定义、异构的类型相关联 [8]。这个定义很拗口，但联系到函数重载的使用场景，其实特设多态的意图是相对清晰的：对于一个多态的值或接口，其关联的每个类型都需要单独、专门地去实现（因此而得名“特设”）。
+在编程语言理论里，函数重载是**特设多态**（ad-hoc polymorphism）的主要形式。特设多态定义是，同一个值能与多个单独定义、异构的类型相关联 [8]。换句话说，对于一个多态的值，其关联的每个类型都需要单独、专门地去实现，因此而得名“特设”。
 
-显然，当前大部分编程语言内置的运算符都属于特设多态。在相等函数一例中，相等函数名 `equal` 是一个多态的值；而比较整型、字符串和列表的函数类型则是三个单独定义的类型；其实现也是异构的，比如整型的比较可能只需要一条机器指令 `cmp`，但字符串的比较则可能基于专门设计的算法。
+显然，当前大部分编程语言内置的运算符都属于特设多态。在相等函数一例中，相等函数名 `equal` 是一个多态的值；而比较整型、字符串和列表的函数类型则是分别单独定义的类型；其实现也是异构的，比如整型的比较可能只需要一条机器指令 `cmp`，但字符串的比较则可能基于专门设计的算法。
 
 从实现角度来说，函数重载是一种编程语言内置的派发机制  [Wiki: ad-hoc poly]。编译器内部通常重命名不同的重载版本，在获取重载函数的实参类型后，把被重载函数名派发到合适的重载版本上去，而每个重载版本本身是单态的函数。
 
@@ -57,7 +57,7 @@ bool equal(list a, list b)
 
 比如数组就通常被实现为一个多态的类型，它可能是整型数组、字符串数组或数组的数组等。然而，与每个类型单独实现的特设多态正好相反，这个场景需要一种对于每个类型都使用同一份定义的多态。
 
-至此，便引出了**参数多态**（parametric polymorphism）的概念 [ML paper?]。这种多态通过把具体类型参数化，使得编程语言能够表达与具体类型无关的程序；待使用时，再根据上下文提供的类型实参，对参数多态的程序进行实例化（instantiation）得到最终的具体类型。
+至此，便引出了**参数多态**（parametric polymorphism）的概念 [ML paper, 1975]。这种多态通过把具体类型参数化，使得编程语言能够表达与具体类型无关的程序；待使用时，再根据上下文提供的类型实参，对参数多态的程序进行实例化（instantiation）得到最终的具体类型。
 
 ```
 // 使用尖括号添加类型参数
@@ -125,18 +125,11 @@ class http_response {
 
 在编程语言概念上，继承跟子类型多态没有必然的关系。目前，C++ 或 Java 的类继承就是同时继承实现和接口的；相比类继承，Java 的 `implements interface` 机制更倾向于单纯地实现子类型多态；然而，Go 的 `interface` 实现了子类型多态，但它不是”继承“。
 
-子类型多态所要求的“替换”有两层含义：一是在代码的语法上，子类型确实拥有父类型的接口，编程语言理论对子类型定义通常只要求这一层；二是在其语义上，子类型的确实现了接口所声称的行为——这第二层的概念有个更为人所知的名字：里氏替换原则（Liskov substitution principle），由 Barbara Liskov 于 80 年代的一场演讲中而为人所知。
+子类型多态所要求的“替换”有两层含义：一是在代码的语法上，子类型确实拥有父类型的接口，编程语言理论对子类型定义通常只要求这一层；二是在其语义上，子类型的确实现了接口所声称的行为——这第二层的概念有个更为人所知的名字：里氏替换原则（Liskov substitution principle），由 Barbara Liskov 的一场演讲中而为人所知 [Liskov 1986]。
 
 例如，Java 的 `Comparator` 接口的文档中，对该接口 `compare()` 方法的语义有详细的描述，要求了分别在什么情况下返回正数和负数、方法必须具备传递性等 [5]。然而，在大部分情况下，编译器或其他检查工具无从证明代码是否正确地实现了上述语义（完全的证明等价于 the halting problem），而只能校验程序语法的正确性。因此，接口语义一般以文档方式记载，是一种“君子协议”。
 
 面向对象设计先驱 Alan Kay 曾在一场演讲中表达过如下观点：依赖程序员能按照接口的语义去编写代码，是面向对象编程最脆弱的地方之一；仅仅在语法上满足接口的输入、输出类型不能满足他对“面向对象编程”的定义 [4]。
-
-*可选内容*：subtype 还会遇到另一个问题：covariance 与 contravariance。Variance 指的是：
-
-> how subtyping between more complex types relates to subtyping between their components? 蹩脚的翻译：复合类型之间的 subtyping 关系与构成它们的元素的 subtyping 有什么联系？
-
-- covariance：`Integer extends Number`，那么`ArrayList<Number>` 与 `ArrayList<Integer>`具备超类子类关系吗？
-- contravariance：`Function<Number, String>` 是 `Function<Integer, String>` 的子类？如果有个地方期待后者，我可以塞一个前者进去正常运行？
 
 ## Subtyping is Cross-Cutting
 
@@ -164,47 +157,100 @@ Java 的泛型便利用了子类型关系来进行类型参数约束：
 sort(Integer[] a, Comparator<Number> c)
 ```
 
+*可选内容*：subtype 还会遇到另一个问题：covariance 与 contravariance。Variance 指的是：
 
+> how subtyping between more complex types relates to subtyping between their components? 蹩脚的翻译：复合类型之间的 subtyping 关系与构成它们的元素的 subtyping 有什么联系？
+
+- covariance：`Integer extends Number`，那么`ArrayList<Number>` 与 `ArrayList<Integer>`具备超类子类关系吗？
+- contravariance：`Function<Number, String>` 是 `Function<Integer, String>` 的子类？如果有个地方期待后者，我可以塞一个前者进去正常运行？
 
 ## Go Interface: ad-hoc x subtyping
 
-Go 和 Java 一样也有 `interface` 用于说明一个类型的行为，并以一组方法签名来定义。比如 `context.Context` 的定义为以下一组方法：
+Go 语言也具备子类型多态的特性，但并不基于类继承，而是特设的。Go 语言的子类型多态基于 `interface` 实现，与基于类继承的面向对象语言相同，一个 `interface` 类型也是由一组方法签名所定义；如果某个类型实现了一个 `interface` 中的所有方法，那么这个类型的对象就可以被当作该 `interface` 对象来使用 。
 
-```go
-type Context interface {
-	Deadline() (deadline time.Time, ok bool)
-	Done() <-chan struct{}
-	Err() error
-	Value(key any) any
+以 `error interface` 为例，几乎所有的 Go 程序都会用到它：
+
+```
+type error interface {
+	Error() string
 }
 ```
 
-有了上文的铺垫，可以识别出 Go interface 的使用也是一种 subtype polymorphism。但它跟 Java interface 不一样之处是，Go interface 不需要显式地声明实现与 interface 的关系，而是由编译器进行检查。目前 `context` 的实现分别使用了 `emptyCtx`， `cancelCtx`，`timerCtx` 和 `valueCtx` 等一系列结构体，但这些结构体的声明中都不需要提及 `context` interface。
+我们可以这样实现一个具体的错误类型：
 
-这种方式被称为 structural typing，它基于类型的实际结构和定义，来判断类型之间的关系 [6]；而基于声明来判断的则被称为 nominal typing。Structural typing 又可进一步地分为静态和动态的——后者俗称 duck typing。在 Go 的情况中，假设有 `type S` 和 `interface I`，Go 编译器通过检查 `S` 是否实现了 `I` 所定义的方法集，来判断 `S `是否为 `I `的 subtype。
+```
+type baseErr struct {
+	msg string
+}
 
-在 subtype 的实现上，Go 比 C++ 或 Java 都更清晰：它明确地区分了代码复用和 subtype polymorphism 两种情况，其中前者在 Go 中主要通过组合的方式达到。继承是一种侵入式的特性，subclass 可以访问并依赖 superclass 的实现，这种耦合可能导致难以在不破坏 subclass 的前提下修改 superclass 的实现，这个问题被称为“The fragile base class problem” [10]。
+func (e baseErr) Error() string { 
+	return e.msg 
+}
+
+func NewError(msg string) error {
+	return baseErr{msg}
+}
+```
+
+可以看到，`NewError` 能直接把 `baseErr` 对象当作 `error` 对象使用（作为返回值）。这是因为，Go 与类继承语言不同，只要实现 `Error() string` 的对象都可以被当作 `error` 对象使用，而不要求这个对象与 `error` 有继承关系。
+
+Go 编译器在编译时会检查 `baseErr` 是否实现了 `error` 的方法集，来判断前者是否为 `error` 的子类型，而不需要代码来声明它们存在子类型关系。这种基于类型的结构或定义来决定类型之间的相容性或相等关系的类型系统，被称为 *structural type system* [6]。俗称为 *duck typing* 的类型特性，其实就是指在运行时检查类型相容性的 structural type system。
+
+与之相对地，基于声明决定类型相容性的类型系统则被称为 *nominal type system*，比如 Java 就属于基于声明的。同样的情况下，Java 要求代码显式声明 `class err implements error` 。
+
+ 从另一方面看，Go的 `interface` 不仅是子类型多态，还是一种特设多态。假设在上述基本的 `baseErr` 之上，我们再添加一种 `messageErr`类型，可以为已有的 `error` 对象添加错误描述：
+
+```
+type messageError struct { 
+	err error
+	msg string 
+}
+
+func (e messageError) Error() string {
+	return e.msg + ": " + e.err.Error()
+}
+
+func WithMessage(err error, msg string) error {
+	return messageError{err, msg}
+}
+```
+
+可以看到，`error`、`baseErr` 和 `messageErr` 三个类型间没有任何显式的关系，共性只是后两者拥有 `error` 的接口。
+
+在子类型多态的实现上，Go 可能比 C++ 或 Java 都更清晰：它没有引入类继承的概念，明确地区分了代码复用和接口继承是两种不同的情况。静态类型的类继承语言自上世纪九十年代统治工业界以来，陆续出现了大量对于类继承的反思。类继承是一种侵入式的特性，如果子类可以访问并依赖父类的实现，便造成彼此实现上的耦合。这种耦合导致了“The fragile base class problem” ，即难以修改 superclass 的实现，但又不破坏子类 [10]。
 
 在 C++ 社区，其实一直有使用非侵入式的技巧来实现 subtype 多态的主张，而非遵循传统地显式地使用继承特性，比如 Sean Parent 的一系列重磅级演讲（其中比较详细的一场见 [11]）。但其实早在90年代末就有 paper 总结过这种模式 [12]；我也写过一系列文章讨论过其实现 [13]。
 
-说到 cross-cutting，Go interface 是 ad-hoc 的。
-
-```go
-type Iterator[T] interface {
-  Next() bool
-  Get()  T
-}
-```
-
 ## Type Class: ad-hoc x parametric
 
-第三种方式，签名变成了 `(==) :: a(==) -> a(==) -> Bool`。这种方式中，只有实现了 `==` 函数的类型才可以比较。此处的 `(==)` 不再仅仅表示某个函数，而是引入了一个超越类型本身的概念，这个概念说明了类型的属性或接口——`(==)` 意味着类型具备相等比较的接口。
+不止子类型多态会与其他多态产生化学反应，特设多态和参数多态的碰撞也有不一样的火花。上文在参数多态的讨论中提到过，参数多态的函数依赖实际类型具备共同的接口，因此需要某种形式的类型约束。诸如 Java 或 C# 一类的面向对象的语言选择了使用子类型多态和类继承来做类型约束；而 1989 年的一篇论文提出了 *type class* 的概念，利用了特设多态来处理这个问题，并首先在知名的函数式语言 Haskell 中实现 [Ad-hoc 1989]。
 
-原文就是在这样的背景下，提出了 *type class*。它是一种基于重载的多态机制，调和了完全依赖重载的方式一和完全泛型的方式二。论文中以 `Num` 为例来介绍 type class 的概念。`class Num` 的声明如下：
+以 Haskell 编写的 `member` 函数为例，这是一个泛型函数，返回指定元素是否在输入的列表中，这要求元素必须能够进行相等比较。假设约束其中 `a` 是类型参数
 
-```haskell
+```
 class Eq a where
 	(==)   :: a -> a -> Bool
+	
+member :: Eq a => [a] -> a -> Bool
+```
+
+Type class 的定义由一组函数签名构成，就像面向对象中的接口定义。使用时，它类似一条类型断言写在函数签名中，可类比 Java 中类型约束表达式 `T extends Eq` 。然而，type class 虽然也叫”class“，但它并不是类型，而是作用于类型参数的约束体。
+
+// todo type class 的使用
+
+```
+instance Eq a => Eq [a] where
+	[] == []     = True
+	[] == y:ys   = False
+	x:xs == []   = False
+	x:xs == y:ys = (x==y) & (xs == ys)
+```
+
+
+
+`class Num` 的声明如下：
+
+```haskell
 class Eq a => Num a where
 	(+)    :: a -> a -> a
 	(*)    :: a -> a -> a
