@@ -221,93 +221,63 @@ func WithMessage(err error, msg string) error {
 
 在 C++ 社区，其实一直有使用非侵入式的技巧来实现 subtype 多态的主张，而非遵循传统地显式地使用继承特性，比如 Sean Parent 的一系列重磅级演讲（其中比较详细的一场见 [11]）。但其实早在90年代末就有 paper 总结过这种模式 [12]；我也写过一系列文章讨论过其实现 [13]。
 
-## Type Class: ad-hoc x parametric
+## Typeclass: ad-hoc x parametric
 
-不止子类型多态会与其他多态产生化学反应，特设多态和参数多态的碰撞也有不一样的火花。上文在参数多态的讨论中提到过，参数多态的函数依赖实际类型具备共同的接口，因此需要某种形式的类型约束。诸如 Java 或 C# 一类的面向对象的语言选择了使用子类型多态和类继承来做类型约束；而 1989 年的一篇论文提出了 *type class* 的概念，利用了特设多态来处理这个问题，并首先在知名的函数式语言 Haskell 中实现 [Ad-hoc 1989]。
+不止子类型多态会与其他多态产生化学反应，特设多态和参数多态的碰撞也有不一样的火花。上文在参数多态的讨论中提到过，参数多态的函数依赖实际类型具备共同的接口，因此需要某种形式的类型约束。诸如 Java 或 C# 一类的面向对象的语言选择了使用子类型多态和类继承来做类型约束；而 1989 年的一篇论文提出了 *typeclass* 的概念，利用了特设多态来处理这个问题，并首先在知名的函数式语言 Haskell 中实现 [Ad-hoc 1989]。
 
-以 Haskell 编写的 `member` 函数为例，这是一个泛型函数，返回指定元素是否在输入的列表中，这要求元素必须能够进行相等比较。假设约束其中 `a` 是类型参数
+以 Haskell 编写的 `member` 函数为例，它返回指定元素是否在输入的列表中，这要求元素必须能够进行相等比较；这是一个泛型函数，其中 `a` 是类型参数：
 
-```
+```haskell
 class Eq a where
 	(==)   :: a -> a -> Bool
 	
 member :: Eq a => [a] -> a -> Bool
 ```
 
-Type class 的定义由一组函数签名构成，就像面向对象中的接口定义。使用时，它类似一条类型断言写在函数签名中，可类比 Java 中类型约束表达式 `T extends Eq` 。然而，type class 虽然也叫”class“，但它并不是类型，而是作用于类型参数的约束体。
+我们先定义名为 `Eq` 的 typeclass，其包含一个可以进行相等比较的函数。Typeclass 的定义由一组函数签名构成，就像面向对象中的接口定义。使用时，函数声明里 `=>` 符号前面的表达式就是约束： `Eq a`，意味着 `member` 的参数类型 `a` 必须为 `Eq` 的成员。
 
-// todo type class 的使用
+然而，typeclass 虽然也叫”class“，但它并不是类型（ `a` 并非 `Eq` 的子类型）。它作用的领域可类比 Java 中类型约束表达式 `T extends Eq`（Haskell 和 Java 同为静态类型，这些表达式的求值位于编译期）；它的操作数（operand）为类型本身，而非类型实例化的对象。
 
-```
+再来看如何为一个类型实现 typeclass。Haskell 中用 `instance` 关键字来开始实现 typeclass，以下是列表（ `[a]`）的 `Eq ` 实现：
+
+```haskell
 instance Eq a => Eq [a] where
 	[] == []     = True
 	[] == y:ys   = False
 	x:xs == []   = False
-	x:xs == y:ys = (x==y) & (xs == ys)
+	x:xs == y:ys = (x==y) & (xs==ys)
 ```
 
+Typeclass 的本质，是结构化的重载函数（因此说它是用特设多态解决参数多态的问题）。重载函数的实现与被重载的类型的定义是解耦的，因此也可以随时为一个类型实现某个 typeclass，无论这个类型是否定义于当前的代码模块。但是单个重载函数无法表达接口，而 typeclass 通过把重载函数组在一起并命名，从而可以定义接口，但又不额外引入类型之间的依赖关系。
 
+要简单地实现 typeclass 也非常直接，编译器只需要为使用了 typeclass 约束的函数隐式地添加一个函数表的参数，并根据实参类型设置表中的函数。在编译时，可以根据实参推断出具体需要 typeclass 的哪个 `instance` ，因此泛型函数可以完全地保留实参类型信息。
 
-`class Num` 的声明如下：
+更进一步地，编译期拥有完整类型信息，将提供更多的编译优化机会和实现的弹性。比如，编译器可以：
 
-```haskell
-class Eq a => Num a where
-	(+)    :: a -> a -> a
-	(*)    :: a -> a -> a
-	negate :: a -> a
-```
+- 每个一个泛型函数都用同一份代码，在函数表中内嵌实参类型信息，并根据这些信息去申请内存、使用变量，这样做在编译产物体积和编译速度上都有优势。
+- 编译器可以针对每一个不同的实参类型单独生成一个函数，并函数表内联，从而给编译器更多的上下文信息做优化，这样在代码的运行速度上更有优势。
 
-这段声明意味着：
-
-1. 类型 `a` 属于 `class Eq`（这个 type class实现了相等比较），是 `a` 属于 `Num` 的必要条件。这一点展示了 type class 的组合能力，熟悉 OOP 继承的读者可以想象 type class 间基于组合关系形成的 hierarchy。
-2. 在满足 1. 的基础上，如果类型 `a` 具备 `+`, `*` 和 `negate` 函数，则 `a` 属于 `class Num`。
-
-我们通过 `instance` 关键字和定义 type class 要求的函数，将一个类型实现为某个 type class 的成员：
-
-```haskell
-instance Num Int where
-	(+)    = addInt
-	(*)    = mulInt
-	negate = negInt
-```
-
-这段代码需要注意的另外一点是，type class 更多是一种 ad-hoc polymorphism。上面这段代码在为 `Int` 实现 `Num` 的接口时，虽然提到了后者，但这段代码是与类型 `Int` 的定义相分离的，这一点与 Java 或 C++ 为首的“OOP 语言”不同。这种 OOP 并不显式地区分代码和接口继承，因此实现接口意味着侵入式地修改类型的声明与定义；而为一个类型实现 type class 时，是结构化地为该类型定义了一组重载函数。
-
-要使用 type class 时，可以声明一个函数仅于属于某 type class 的类型之上有定义。例如，我们声明多态的平方函数仅在属于 `Num` 的类型上有定义：
-
-```haskell
--- 类型参数a只能是属于Num的类型
-square :: Num a => a -> a -- 签名
-square x =  x * x         -- 定义
-```
-
-小结一下，type class 可以视作一种类型的约束机制（原文的用词是 *bounded quantifier*）。Type class 的定义描述了类型的接口；而一个类型属于某个 type class，等价于这个类型具备该 type class 要求的接口。看到这里，熟悉 OOP 方法论的读者可能会说，interface 也是一组方法的集合，难道 type class 就是发明了一次 interface（如果不是又一次）？
-
-其实，从编程语言的角度上来看，这两个概念还是泾渭分明的：type class 不是类型，但具体的 interface 通常是一个类型。OOP 里的 interface 是 subtype polymorphism 的一种应用：如果类型 S 是类型 T 的 subtype 关系（记为 S <: T），意味着可以在期待 T 对象之处，用 S 对象安全地替换 T 使用（此处关联里氏替换原则）。然而 type class 不是类型，那么某个类型与其所属的 type class 之间就没有所谓可替换性一说了。
+介绍一点八卦：typeclass paper 的作者之一 Philip Wadler 参与过 Java 泛型和 Go 泛型的工作。Go 泛型设计过程中，由于没有形如 `Object` 类 top-type 的存在，保留了上述实现的弹性。Go第一个泛型版本（Go 1.18）选择了既要给泛型函数传入包含函数变量和类型信息的字典，又会在考虑 GC 策略的前提下为不同大小的类型生成特化的版本，具体的讨论见 [15]。
 
 ## C++ Concept
 
-原文中提到，用翻译来引入 type class 的问题之一，就是多态函数将会依赖动态派发的。然而，如果在编译时能通过类型实参来确定多态函数实际需要使用的函数，便能够针对性地生成多态函数的特化版本，以代码体积上升的代价换取运行时的性能。这方面最为人熟知的例子之一，就是 C++ template。
+在 typeclass 实现讨论中提到，如果在编译时通过类型实参来确定泛型函数实际需要使用的函数，便能够针对性地生成特化版本，以代码体积上升的代价换取运行时的性能。在主流语言中，最为人熟知的例子莫过于 C++ 的模板 `template`，它类似于语言内置的宏或代码生成特性：对于一个 `template`，编译器会为其每一组不同的实参单独生成一份代码。
 
-C++ template 类似于语言内置的宏或代码生成特性，对于一个 template，编译器会为其每一组不同的实参生成一份代码。而 C++ 20 标准引入的用于约束或限制 template 的特性 concepts，其语法和功能都能听见 type class 的回响。
+C++ 的模板被广泛地用于泛型函数的实现，但却长期缺乏类型约束的设施，导致 C++ 模板编程的必备技能是学会名为 *SFINAE* 的 idiom —— SFINAE 利用了（exploit）语言的编译规则，根据类型实参来选择是否进行模板实例化。
 
-比如，定义一个 concept，要求类型参数为支持相等比较的类型：
+C++20 标准正式地引入了用于约束 `template` 参数的特性 concepts。然而，其语法和功能都有 typeclass 的影子。比如，还是限制类型参数需要支持 `==` 操作，用 `concept` 实现如下：
 
 ```c++
 template <typename T>
 concept eq = requires(T a, T b) {
     { a == b } -> std::convertible_to<bool>;
 };
+// concept长得很像一个啰嗦的typeclass！
+// class Eq a where 
+//   (==) :: a -> a -> Bool
 ```
 
-这个 `concept eq` 是不是很像上文中的 type class ` Eq` 呢：
-
-```haskell
-class Eq a where 
-    (==) :: a -> a -> Bool
-```
-
-进一步地，再定义一个 concept 要求偏序比较，并将同时满足相等和偏序比较的类型称为可比较 `comparable`，可见 concept 也和 type class 或 Go interface 有易用的组合性：
+进一步地，再定义一个 `concept less` 用于要求类型实现偏序比较，并将同时满足 `eq` 和 `less` 的类型称为 `comparable`：
 
 ```C++
 template <typename T>
@@ -319,7 +289,9 @@ template <typename T>
 concept comparable = eq<T> && less<T>;
 ```
 
-再看 concept 的实现，由于 concept 是在 template 层面的，与传统意义的类继承几乎平行，我们也可以像实现 type class 那样以 ad-hoc polymorphism 的方式来实现concept——其实就是写重载函数。
+可见 concept 也有易用的组合性（typeclass 或 Go `interface`  也具备这个有点）。
+
+再来看 concept 的实现。由于 concepts 同样不是类型而将类型作为操作数，我们也可以像实现 typeclass 那样，以特设多态的方式来实现 `concept`，其实就是写重载函数。假设有一个 `person` 类，我们为其“实现” `comparable` 如下：
 
 ```C++
 struct person {
@@ -338,9 +310,10 @@ bool operator<(const person& lhs, const person& rhs) {
 static_assert(comparable<person>); // true
 ```
 
-可以看到，concept 的不同之处在于，template 之于类型有着类似 *structural typing* 语法（俗称 duck typing），所以实现某个 concept 不需要提及它；但反过来说，由于 concept 作用的 template 层面与其他语言特性所在的层次有距离感，其使用体验便不足 type class 的那般丝滑。事实上，C++ 长期被 template 把语言生态割裂得两极分化，是不利于社区发展的。
+可以看到，concepts 和 typeclass 的对偶，就像 Go 和 Java 各自 `interface` 的对偶：模板之于类型有着类似 structural typing 的性质，代码中不需要提及需要满足的 `concept`；但 typeclass 的 `instance` 需要提及 typeclass 的名字。
+
+但在另一方面，由于 concepts 在模板里才起作用，与其他语言特性便有割裂感，其使用体验便不及 typeclass 那样流畅。事实上，C++ 社区中似乎长期有一条以 template 为界的线，让语言生态两极分化。C++11 起，标准委员会花了很大努力提高模板编程的易用性，以融合模板与其他语言特性。
 
 ## 参考链接
 
-[1] Wikipedia - Polymorphism (computer science). https://en.wikipedia.org/wiki/Polymorphism_(computer_science) <br/>[2] Go spec - Comparison operators. https://go.dev/ref/spec#Comparison_operators <br/>[3] Wikipedia - Liskov substitution principle. https://en.wikipedia.org/wiki/Liskov_substitution_principle <br/>[4] Seminar with Alan Kay on Object Oriented Programming (VPRI 0246). https://youtu.be/QjJaFG63Hlo<br/>[5] Comparator (Java Platform SE 8). https://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html<br/>[6] Wikipedia - Structural type system. https://en.wikipedia.org/wiki/Structural_type_system<br/>[7] "Gang of Four" - Design Patterns: Elements of Reusable Object-Oriented Software.<br/>[8] Benjamin Pierce - Types And Programming Languages.<br/>[9] Mikhajlov, Leonid; Sekerinski, Emil - A Study of The Fragile Base Class Problem. http://www.cas.mcmaster.ca/~emil/Publications_files/MikhajlovSekerinski98FragileBaseClassProblem.pdf<br/>[10] Allen Holub - Why extends is evil. https://www.infoworld.com/article/2073649/why-extends-is-evil.html<br/>[11] Sean Parent - Better Code: Runtime Polymorphism. https://youtu.be/QGcVXgEVMJg<br/>[12] Chris Cleeland, Douglas C. Schmidt - External Polymorphism. https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-EP.pdf<br/>[13] 深入浅出C++类型擦除（1） - 知乎. https://zhuanlan.zhihu.com/p/351291649<br/>[14]
-
+[1] Wikipedia - Polymorphism (computer science). https://en.wikipedia.org/wiki/Polymorphism_(computer_science) <br/>[2] Go spec - Comparison operators. https://go.dev/ref/spec#Comparison_operators <br/>[3] Wikipedia - Liskov substitution principle. https://en.wikipedia.org/wiki/Liskov_substitution_principle <br/>[4] Seminar with Alan Kay on Object Oriented Programming (VPRI 0246). https://youtu.be/QjJaFG63Hlo<br/>[5] Comparator (Java Platform SE 8). https://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html<br/>[6] Wikipedia - Structural type system. https://en.wikipedia.org/wiki/Structural_type_system<br/>[7] "Gang of Four" - Design Patterns: Elements of Reusable Object-Oriented Software.<br/>[8] Benjamin Pierce - Types And Programming Languages.<br/>[9] Mikhajlov, Leonid; Sekerinski, Emil - A Study of The Fragile Base Class Problem. http://www.cas.mcmaster.ca/~emil/Publications_files/MikhajlovSekerinski98FragileBaseClassProblem.pdf<br/>[10] Allen Holub - Why extends is evil. https://www.infoworld.com/article/2073649/why-extends-is-evil.html<br/>[11] Sean Parent - Better Code: Runtime Polymorphism. https://youtu.be/QGcVXgEVMJg<br/>[12] Chris Cleeland, Douglas C. Schmidt - External Polymorphism. https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-EP.pdf<br/>[13] 深入浅出C++类型擦除（1） - 知乎. https://zhuanlan.zhihu.com/p/351291649<br/>[14] <br/>[15] Go generic https://github.com/golang/proposal/blob/master/design/generics-implementation-dictionaries-go1.18.md
