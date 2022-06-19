@@ -143,19 +143,15 @@ Java 的泛型便利用了子类型关系来进行类型参数约束：
 sort(Integer[] a, Comparator<Number> c)
 ```
 
-*可选内容*：subtype 还会遇到另一个问题：covariance 与 contravariance。Variance 指的是：
-
-> how subtyping between more complex types relates to subtyping between their components? 复合类型之间的 subtyping 关系与构成它们的元素的 subtyping 有什么联系？
-
 更进一步地， `Comparator<Number>`  和 `Comparator<? super Integer>` 的关系又是什么呢？对于泛型类，如果作为参数的类型之间存在子类型关系，意味着实例化形成的泛型类之间存在子类型关系吗？
 
-比如，已知 Java 中存在 `Integer <: Number`，那么 `ArrayList<Integer> <: ArrayList<Number>` 是否成立？有些编程语言（如 OCaml）是允许后者成立的，这种组合类型间的子类型关系与元素子类型关系方向一致的情况，被称为 ***covariance***。然而， Java 不允许直接地建立子类型关系，而是需要使用类型通配符 `?` 来间接地实现：`ArrayList<Integer> <: ArrayList<? extends Number>`。
+比如，已知 Java 中存在 `Integer <: Number`，那么 `ArrayList<Integer> <: ArrayList<Number>` 是否成立？有些编程语言（如 OCaml）是允许后者成立的，这种组合类型间的子类型关系与元素子类型关系方向一致的情况，被称为 ***covariance***。这种情况下，Java 不允许它们直接建立子类型关系，而是需要使用 bounded quantification 来间接地建立：`ArrayList<Integer> <: ArrayList<? extends Number>`。
 
 然而，上述规则似乎有瑕疵：假设有 `Function<Integer, String>`，且存在一个类型 `T` 满足`Integer <: T <: Number`，那么 `Function<Integer, String> <: Function<? extends Number, String>` 就不成立。
 
-恰恰相反，`Integer` 作为函数入参类型，且存在 `Integer <: Number`，那么 `Function<Number, String>` 应当能够”替代“  `Function<Integer, String>` 使用——输入`Integer` 对象，但把它当成 `Number` 使用，是符合子类型关系的。这种组合类型之间的可替代关系与元素类型的相反，被称为 ***contravariance***，泛型函数的入参类型约束问题是这个概念的典例。
+恰恰相反，由于 `Integer` 作为 `Function` 的入参类型，且存在 `Integer <: Number`，那么 `Function<Number, String>` 应当能够”替代“  `Function<Integer, String>` 使用才对——输入`Integer` 对象，但把它当成 `Number` 使用，是符合子类型关系的。这种组合类型之间的可替代关系与元素类型的相反，被称为 ***contravariance***，泛型函数的入参类型约束问题是描述该概念的典例。
 
-综上所述，其实是存在 `Comparator<Number> <: Comparator<? super Integer>` 的关系。
+因此，如果用 bounded quantification 来描述 `Function` 的入参约束，应当为 `? super Integer`，最终得出 `sort` 一例中存在 `Comparator<Number> <: Comparator<? super Integer>` 的关系。
 
 ## Go Interface
 
