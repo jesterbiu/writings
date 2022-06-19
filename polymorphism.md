@@ -36,7 +36,7 @@ bool equal(list a, list b)
 
 大部分编程语言以重载操作符的形式（操作符重载本质就是函数重载），在语言里内置了字节、整型及浮点数等原始数据类型的相等比较，并以库的形式提供字符串、列表等数据结构的相等比较。比如，在 C++ 中为一个类型实现相等比较的惯例作法为其重载 `==` 操作符；更有甚者，在类型系统设计上一切从简的 Go 语言，把字符串重载的 `==` 也内置到语言里去了。
 
-在编程语言理论里，函数重载是**特设多态**（ad-hoc polymorphism）的主要形式。特设多态定义的是，多态函数在一组不同类型的参数上有定义，对于不同类型的实参，会调用不同的函数实现，从而根据入参类型获得不同的行为，且这些实现是彼此独立的 [2,3]。换句话说，对于一个特设多态函数，其关联的每个类型都需要单独、专门地去实现，因此而得名“特设”。
+在编程语言理论里，函数重载是**特设多态**（ad-hoc polymorphism）的主要形式。特设多态定义的是，多态函数在一组不同类型的参数上有定义，对于不同类型的实参，会调用不同的函数实现，从而根据入参类型获得不同的行为，且这些实现是彼此独立的 [2,3,19]。换句话说，对于一个特设多态函数，其关联的每个类型都需要单独、专门地去实现，因此而得名“特设”。
 
 显然，当前大部分编程语言内置的运算符都属于特设多态。在 `equal` 一例中，比较整型、字符串和列表的函数则是根据入参类型区分的独立实现。整型的比较可能只需要一条机器指令 `cmp`，但字符串的比较则可能基于专门设计的算法。
 
@@ -45,7 +45,7 @@ bool equal(list a, list b)
 ## Parametric Polymorphism
 通用的数据结构或算法通常与其操作的元素类型无关，无论元素类型如何，它们都会对元素执行同样的操作——比如数组或排序算法，同一份实现应当可用于几乎任意的元素类型。以数组为例，它可能是整型数组、字符串数组或数组的数组等。然而，与每个类型单独实现的特设多态正好相反，这个场景需要一种对于每个类型都使用同一份定义的多态。
 
-为此，编程语言中出现了**参数多态**（parametric polymorphism）的概念 [2]。这种多态通过把具体类型参数化，使得编程语言能够表达与具体类型无关的程序；待使用时，再根据上下文提供的类型实参，对参数多态的程序进行实例化（instantiation）得到最终的具体类型。
+为此，编程语言中出现了**参数多态**（parametric polymorphism）的概念。这种多态通过把具体类型参数化，使得编程语言能够表达与具体类型无关的程序；待使用时，再根据上下文提供的类型实参，对参数多态的程序进行实例化（instantiation）得到最终的具体类型 [2,19]。
 
 ```
 // 使用尖括号添加类型参数
@@ -123,7 +123,7 @@ class http_response {
 
 对于一个参数多态函数，其合法的类型实参都具备某种共同结构或接口，是它不依赖具体类型而编写的前提。比如一个泛型的排序函数，它其实假设了被排序的元素是存在某种偏序关系的。因此，在保证类型安全的前提下，排序函数需要限制元素的类型为可以比较顺序的类型。
 
-在面向对象编程中，对象可以进行比较的性质通常以方法的形式表达，而子类型多态的定义正好就基于了类型间的共同接口（子类型拥有父类型的接口）。因此，可以利用子类型关系来表达参数类型的限制，这种构建的正式名称叫 ***bounded quantification*** [2]。
+在面向对象编程中，对象可以进行比较的性质通常以方法的形式表达，而子类型多态的定义正好就基于了类型间的共同接口（子类型拥有父类型的接口）。因此，可以利用子类型关系来表达参数类型的限制，这种构建的正式名称叫 ***bounded quantification*** [2,19]。
 
 Java 的泛型便利用了子类型关系来进行类型参数约束：
 
@@ -303,10 +303,6 @@ static_assert(comparable<person>); // true
 
 但在另一方面，由于 concepts 在模板里才起作用，与其他语言特性便有割裂感，其使用体验便不及 typeclass 那样流畅。事实上，C++ 社区中似乎长期有一条以 template 为界的线，让语言生态两极分化。C++11 起，标准委员会花了很大努力提高模板编程的易用性，以融合模板与其他语言特性。
 
-## 结语
-
-On Understanding Types, Data Abstraction, and Polymorphism
-
 ## References
 
-[1] Wikipedia - Polymorphism (computer science). https://en.wikipedia.org/wiki/Polymorphism_(computer_science) <br/>[2] Benjamin Pierce - Types And Programming Languages.<br/>[3] Wikipedia - Ad hoc polymorphism. https://en.wikipedia.org/wiki/Ad_hoc_polymorphism<br/>[4] R. Milner, L. Morris, M. Newey - A Logic for Computable Functions with Reflexive and Polymorphic Types. <br/>[5] Java Generics: Past, Present and Futurit. https://youtu.be/LEAoMMEIUXk<br/>[6] "Gang of Four" - Design Patterns: Elements of Reusable Object-Oriented Software.<br/>[7] Wikipedia - Liskov substitution principle. https://en.wikipedia.org/wiki/Liskov_substitution_principle <br/>[8] Comparator (Java Platform SE 8). https://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html<br/>[9] Seminar with Alan Kay on Object Oriented Programming (VPRI 0246). https://youtu.be/QjJaFG63Hlo<br/>[10] Wikipedia - Structural type system. https://en.wikipedia.org/wiki/Structural_type_system<br/>[11] Mikhajlov, Leonid; Sekerinski, Emil - A Study of The Fragile Base Class Problem. http://www.cas.mcmaster.ca/~emil/Publications_files/MikhajlovSekerinski98FragileBaseClassProblem.pdf<br/>[12] Allen Holub - Why extends is evil. https://www.infoworld.com/article/2073649/why-extends-is-evil.html<br/>[13] Sean Parent - Better Code: Runtime Polymorphism. https://youtu.be/QGcVXgEVMJg<br/>[14] Chris Cleeland, Douglas C. Schmidt - External Polymorphism. https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-EP.pdf<br/>[15] 深入浅出C++类型擦除（1） - 知乎. https://zhuanlan.zhihu.com/p/351291649<br/>[16] Philip Wadler, Stephen Blott - How to Make Ad-hoc Polymorphism Less Ad-hoc. https://dl.acm.org/doi/pdf/10.1145/75277.75283<br/>[17] Go generic https://github.com/golang/proposal/blob/master/design/generics-implementation-dictionaries-go1.18.md<br/>[18] Walter E. Brown - Modern Template Metaprogramming: A Compendium, Part I. https://youtu.be/Am2is2QCvxY<br/>
+[1] Wikipedia - Polymorphism (computer science). https://en.wikipedia.org/wiki/Polymorphism_(computer_science) <br/>[2] Benjamin Pierce - Types And Programming Languages.<br/>[3] Wikipedia - Ad hoc polymorphism. https://en.wikipedia.org/wiki/Ad_hoc_polymorphism<br/>[4] R. Milner, L. Morris, M. Newey - A Logic for Computable Functions with Reflexive and Polymorphic Types. <br/>[5] Java Generics: Past, Present and Futurit. https://youtu.be/LEAoMMEIUXk<br/>[6] "Gang of Four" - Design Patterns: Elements of Reusable Object-Oriented Software.<br/>[7] Wikipedia - Liskov substitution principle. https://en.wikipedia.org/wiki/Liskov_substitution_principle <br/>[8] Comparator (Java Platform SE 8). https://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html<br/>[9] Seminar with Alan Kay on Object Oriented Programming (VPRI 0246). https://youtu.be/QjJaFG63Hlo<br/>[10] Wikipedia - Structural type system. https://en.wikipedia.org/wiki/Structural_type_system<br/>[11] Mikhajlov, Leonid; Sekerinski, Emil - A Study of The Fragile Base Class Problem. http://www.cas.mcmaster.ca/~emil/Publications_files/MikhajlovSekerinski98FragileBaseClassProblem.pdf<br/>[12] Allen Holub - Why extends is evil. https://www.infoworld.com/article/2073649/why-extends-is-evil.html<br/>[13] Sean Parent - Better Code: Runtime Polymorphism. https://youtu.be/QGcVXgEVMJg<br/>[14] Chris Cleeland, Douglas C. Schmidt - External Polymorphism. https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-EP.pdf<br/>[15] 深入浅出C++类型擦除（1） - 知乎. https://zhuanlan.zhihu.com/p/351291649<br/>[16] Philip Wadler, Stephen Blott - How to Make Ad-hoc Polymorphism Less Ad-hoc. https://dl.acm.org/doi/pdf/10.1145/75277.75283<br/>[17] Go generic https://github.com/golang/proposal/blob/master/design/generics-implementation-dictionaries-go1.18.md<br/>[18] Walter E. Brown - Modern Template Metaprogramming: A Compendium, Part I. https://youtu.be/Am2is2QCvxY<br/>[19] Luca Cardelli, Peter Wegner - On Understanding Types, Data Abstraction, and Polymorphism. https://www.eecis.udel.edu/~lliao/cis670/on_understanding_types.pdf<br/>
