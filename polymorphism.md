@@ -1,4 +1,4 @@
-# 多态
+# 浅谈编程语言中的多态
 
 
 
@@ -78,13 +78,13 @@ sort(arr)
 
 ```
 void process_file(string_stream r) {
-	for r.has_more() {
-		process(r.read())
-	}
+    for r.has_more() {
+        process(r.read())
+    }
 }
 class string_stream { 
-	string read()
-	bool has_more()
+    string read()
+    bool has_more()
 }
 ```
 
@@ -92,14 +92,14 @@ class string_stream {
 
 ```
 class file { 
-	string read() // 从磁盘文件读取字符串
-	bool has_more()
-	void close()
+    string read() // 从磁盘文件读取字符串
+    bool has_more()
+    void close()
 }
 class http_response { 
-	string read() // 从http回复读取字符串
-	bool has_more()
-	http_request get_request()
+    string read() // 从http回复读取字符串
+    bool has_more()
+    http_request get_request()
 }
 ```
 
@@ -139,7 +139,7 @@ Java 的泛型便利用了子类型关系来进行类型参数约束：
 
 例如，设 `T = Integer` 且 `Integer <: Number` ，那么就可以用一个 `Comparator<Number>` 对象来调用 `sort`。填入类型实参后，`sort` 的函数签名是：
 
-```Java
+```java
 sort(Integer[] a, Comparator<Number> c)
 ```
 
@@ -161,7 +161,7 @@ Go 语言也具备子类型多态的特性，但并不基于类继承，而是�
 
 ```go
 type error interface {
-	Error() string
+    Error() string
 }
 ```
 
@@ -169,15 +169,15 @@ type error interface {
 
 ```go
 type baseErr struct {
-	msg string
+    msg string
 }
 
 func (e baseErr) Error() string { 
-	return e.msg 
+    return e.msg 
 }
 
 func NewError(msg string) error {
-	return baseErr{msg}
+    return baseErr{msg}
 }
 ```
 
@@ -191,16 +191,16 @@ func NewError(msg string) error {
 
 ```go
 type messageError struct { 
-	err error
-	msg string 
+    err error
+    msg string 
 }
 
 func (e messageError) Error() string {
-	return e.msg + ": " + e.err.Error()
+    return e.msg + ": " + e.err.Error()
 }
 
 func WithMessage(err error, msg string) error {
-	return messageError{err, msg}
+    return messageError{err, msg}
 }
 ```
 
@@ -218,8 +218,8 @@ func WithMessage(err error, msg string) error {
 
 ```haskell
 class Eq a where
-	(==)   :: a -> a -> Bool
-	
+    (==)   :: a -> a -> Bool
+    
 member :: Eq a => [a] -> a -> Bool
 ```
 
@@ -231,10 +231,10 @@ member :: Eq a => [a] -> a -> Bool
 
 ```haskell
 instance Eq a => Eq [a] where
-	[] == []     = True
-	[] == y:ys   = False
-	x:xs == []   = False
-	x:xs == y:ys = (x==y) & (xs==ys)
+    [] == []     = True
+    [] == y:ys   = False
+    x:xs == []   = False
+    x:xs == y:ys = (x==y) & (xs==ys)
 ```
 
 Typeclass 的本质，是结构化的重载函数（因此说它是用特设多态解决参数多态的问题）。重载函数的实现与被重载的类型的定义是解耦的，因此也可以随时为一个类型实现某个 typeclass，无论这个类型是否定义于当前的代码模块。但是单个重载函数无法表达接口，而 typeclass 通过把重载函数组在一起并命名，从而可以定义接口，但又不额外引入类型之间的依赖关系。
@@ -284,7 +284,7 @@ concept comparable = eq<T> && less<T>;
 
 ```C++
 struct person {
-	std::string id;
+    std::string id;
     std::string name;
 };
 
@@ -311,12 +311,12 @@ static_assert(comparable<person>); // true
 
 相比 lambda calculus 或垃圾回收理论等先有理论再有实践的话题，多态概念更多地来自于对现有编程语言设计的归纳和总结，[20] 中就介绍了多态的部分发展历史。当然，我们也可以换个角度想，多态的概念本来就在那里，只是在设计编程语言时才发现它们而已。 
 
-多态是当代编程语言的本质需求之一。然而，不审慎的多态实践一直困扰着程序员。无论是 C++ 社区对模板特性和菱形继承的争论，或是 Java 社区对类继承体系的反思，再到 Go 社区对于是否引入、如何实现泛型的广泛讨论，都反映出程序员们在理解或使用多态时，或多或少地存在困扰。因此，了解为什么这样设计多态特性，以及使用这个特性意味着什么，才能更准确地使用编程语言中的多态特性，并最终产出更好的代码。
+多态是当代编程语言的本质需求之一，然而多态的实践可能缺乏明确的共识。无论是 C++ 社区对模板特性和菱形继承的争论，或是 Java 社区对类继承体系的反思，再到 Go 社区对于是否引入、如何实现泛型的广泛讨论，都反映出程序员们在理解或使用多态时，或多或少地存在困扰。因此，增加对编程语言中多态特性的了解，才能更准确地理解现存代码，并在编写代码时更自如地运用多态。
 
-从更广的角度来说，编程语言的设计与实现，以及人们对编程语言的理解与使用，都与产业的形态有深刻的联系。在如今信息产业中流行的编程语言上倒推一步，就会见到 C 语言（C++, Java, Go 的前辈）和 lisp（JavaScript 的前辈）；而它们对应的基础软件，分别是第一个跨平台的 Unix 操作系统和第一个垃圾回收器。
+从更广的角度来说，编程语言的设计与实现，以及人们对编程语言的理解与使用，都与产业的形态有深刻的联系。在如今信息产业中流行的编程语言上倒推一步，就会见到 C 语言（C++, Java, Go 的前辈）和 lisp（JavaScript 的前辈）；而它们对应的基础软件，分别是第一个跨平台的 Unix 操作系统和第一个垃圾回收器。毫无疑问，它们对无数程序员如何理解、编写代码有不可估量的影响。
 
-Learn yourself some programming languages for fun and profit!
+这篇文章在编程语言理论的角度来看，充其量只是管中窥豹；但如果能启发读者进一步地去了解编程语言的设计和历史，那么本文便达成了抛砖引玉的目的。
 
 ## References
 
-[1] Wikipedia - Polymorphism (computer science). https://en.wikipedia.org/wiki/Polymorphism_(computer_science) <br/>[2] Benjamin Pierce - Types And Programming Languages.<br/>[3] Wikipedia - Ad hoc polymorphism. https://en.wikipedia.org/wiki/Ad_hoc_polymorphism<br/>[4] R. Milner, L. Morris, M. Newey - A Logic for Computable Functions with Reflexive and Polymorphic Types. <br/>[5] Java Generics: Past, Present and Futurit. https://youtu.be/LEAoMMEIUXk<br/>[6] "Gang of Four" - Design Patterns: Elements of Reusable Object-Oriented Software.<br/>[7] Wikipedia - Liskov substitution principle. https://en.wikipedia.org/wiki/Liskov_substitution_principle <br/>[8] Comparator (Java Platform SE 8). https://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html<br/>[9] Seminar with Alan Kay on Object Oriented Programming (VPRI 0246). https://youtu.be/QjJaFG63Hlo<br/>[10] Wikipedia - Structural type system. https://en.wikipedia.org/wiki/Structural_type_system<br/>[11] Mikhajlov, Leonid; Sekerinski, Emil - A Study of The Fragile Base Class Problem. http://www.cas.mcmaster.ca/~emil/Publications_files/MikhajlovSekerinski98FragileBaseClassProblem.pdf<br/>[12] Allen Holub - Why extends is evil. https://www.infoworld.com/article/2073649/why-extends-is-evil.html<br/>[13] Sean Parent - Better Code: Runtime Polymorphism. https://youtu.be/QGcVXgEVMJg<br/>[14] Chris Cleeland, Douglas C. Schmidt - External Polymorphism. https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-EP.pdf<br/>[15] 深入浅出C++类型擦除（1） - 知乎. https://zhuanlan.zhihu.com/p/351291649<br/>[16] Philip Wadler, Stephen Blott - How to Make Ad-hoc Polymorphism Less Ad-hoc. https://dl.acm.org/doi/pdf/10.1145/75277.75283<br/>[17] Go generic https://github.com/golang/proposal/blob/master/design/generics-implementation-dictionaries-go1.18.md<br/>[18] Walter E. Brown - Modern Template Metaprogramming: A Compendium, Part I. https://youtu.be/Am2is2QCvxY<br/>[19] Luca Cardelli, Peter Wegner - On Understanding Types, Data Abstraction, and Polymorphism. https://www.eecis.udel.edu/~lliao/cis670/on_understanding_types.pdf<br/>[20] Christopher Strachey - Fundamental Concepts in Programming Languages. https://classes.cs.uoregon.edu/14S/cis607pl/Papers/fundamental-1967.pdf
+[1] Wikipedia - Polymorphism (computer science). https://en.wikipedia.org/wiki/Polymorphism_(computer_science) <br/>[2] Benjamin Pierce - Types And Programming Languages.<br/>[3] Wikipedia - Ad hoc polymorphism. https://en.wikipedia.org/wiki/Ad_hoc_polymorphism<br/>[4] R. Milner, L. Morris, M. Newey - A Logic for Computable Functions with Reflexive and Polymorphic Types. <br/>[5] Java Generics: Past, Present and Futurit. https://youtu.be/LEAoMMEIUXk<br/>[6] "Gang of Four" - Design Patterns: Elements of Reusable Object-Oriented Software.<br/>[7] Wikipedia - Liskov substitution principle. https://en.wikipedia.org/wiki/Liskov_substitution_principle <br/>[8] Comparator (Java Platform SE 8). https://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html<br/>[9] Seminar with Alan Kay on Object Oriented Programming (VPRI 0246). https://youtu.be/QjJaFG63Hlo<br/>[10] Wikipedia - Structural type system. https://en.wikipedia.org/wiki/Structural_type_system<br/>[11] Mikhajlov, Leonid; Sekerinski, Emil - A Study of The Fragile Base Class Problem. http://www.cas.mcmaster.ca/~emil/Publications_files/MikhajlovSekerinski98FragileBaseClassProblem.pdf<br/>[12] Allen Holub - Why extends is evil. https://www.infoworld.com/article/2073649/why-extends-is-evil.html<br/>[13] Sean Parent - Better Code: Runtime Polymorphism. https://youtu.be/QGcVXgEVMJg<br/>[14] Chris Cleeland, Douglas C. Schmidt - External Polymorphism. https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-EP.pdf<br/>[15] 深入浅出C++类型擦除. https://zhuanlan.zhihu.com/p/351291649<br/>[16] Philip Wadler, Stephen Blott - How to Make Ad-hoc Polymorphism Less Ad-hoc. https://dl.acm.org/doi/pdf/10.1145/75277.75283<br/>[17] Go generic https://github.com/golang/proposal/blob/master/design/generics-implementation-dictionaries-go1.18.md<br/>[18] Walter E. Brown - Modern Template Metaprogramming: A Compendium, Part I. https://youtu.be/Am2is2QCvxY<br/>[19] Luca Cardelli, Peter Wegner - On Understanding Types, Data Abstraction, and Polymorphism. https://www.eecis.udel.edu/~lliao/cis670/on_understanding_types.pdf<br/>[20] Christopher Strachey - Fundamental Concepts in Programming Languages. https://classes.cs.uoregon.edu/14S/cis607pl/Papers/fundamental-1967.pdf
